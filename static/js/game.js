@@ -313,6 +313,15 @@ function showRoleSelection() {
     document.getElementById('organizerSetup').style.display = 'none';
     document.getElementById('playerJoin').style.display = 'none';
     document.getElementById('playerLogin').style.display = 'none';
+    document.getElementById('roomCodeDisplay').style.display = 'none';
+    
+    // Re-enable room code input
+    document.getElementById('roomCodeInput').value = '';
+    document.getElementById('roomCodeInput').disabled = false;
+    
+    // Clear selected planet
+    document.querySelectorAll('.planet-option').forEach(o => o.classList.remove('selected'));
+    gameState.currentPlayerPlanet = null;
 }
 
 function showOrganizerSetup() {
@@ -337,6 +346,8 @@ function createGame() {
     // Get CSRF token
     const csrftoken = getCookie('csrftoken');
     
+    console.log('[CREATE_GAME] Creating room with', playerCount, 'players');
+    
     // Call Django backend to create room
     fetch('/create-room/', {
         method: 'POST',
@@ -348,26 +359,30 @@ function createGame() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('[CREATE_GAME] Response:', data);
         if (data.success) {
             roomCode = data.room_code;
-            document.getElementById('organizerSetup').style.display = 'none';
-            document.getElementById('playerJoin').style.display = 'block';
+            console.log('[CREATE_GAME] Room created:', roomCode);
+            
+            // Show room code
             document.getElementById('roomCodeDisplay').style.display = 'block';
             document.getElementById('roomCodeText').textContent = roomCode;
             
-            // Connect to WebSocket
-            connectWebSocket(roomCode);
+            // Show player selection for organizer to join as first player
+            document.getElementById('organizerSetup').style.display = 'none';
+            document.getElementById('playerLogin').style.display = 'block';
             
-            // Poll for room status
-            pollRoomStatus();
+            // Pre-fill the room code
+            document.getElementById('roomCodeInput').value = roomCode;
+            document.getElementById('roomCodeInput').disabled = true;
             
-            log(`Game created! Room code: ${roomCode}`);
+            log(`Game created! Room code: ${roomCode}. Now choose your planet.`);
         } else {
             alert('Error creating game: ' + data.error);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('[CREATE_GAME] Error:', error);
         alert('Failed to create game');
     });
 }

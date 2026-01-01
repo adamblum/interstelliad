@@ -18,28 +18,37 @@ function getCookie(name) {
 const csrftoken = getCookie('csrftoken');
 
 function connectWebSocket(roomCode) {
+    // Don't connect if already connected
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log('[WS] Already connected to WebSocket');
+        return;
+    }
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/game/${roomCode}/`;
+    
+    console.log('[WS] Connecting to:', wsUrl);
     
     socket = new WebSocket(wsUrl);
     
     socket.onopen = function(e) {
-        console.log('WebSocket connected');
+        console.log('[WS] WebSocket connected');
         log('Connected to game room');
     };
     
     socket.onmessage = function(e) {
         const data = JSON.parse(e.data);
+        console.log('[WS] Message received:', data);
         handleWebSocketMessage(data);
     };
     
     socket.onclose = function(e) {
-        console.log('WebSocket closed');
+        console.log('[WS] WebSocket closed');
         log('Disconnected from game room');
     };
     
     socket.onerror = function(e) {
-        console.error('WebSocket error:', e);
+        console.error('[WS] WebSocket error:', e);
         log('Connection error');
     };
 }
