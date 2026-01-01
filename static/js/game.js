@@ -819,35 +819,49 @@ function handleMove() {
 
 function checkForLife() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const currentSystem = BOARD_STRUCTURE.find(s => 
-        s.q === currentPlayer.position.q && s.r === currentPlayer.position.r
+    const currentHex = BOARD_STRUCTURE.find(h => 
+        h.q === currentPlayer.position.q && h.r === currentPlayer.position.r
     );
     
-    if (!currentSystem) return;
-    
-    // Roll dice
-    const die1 = rollDie();
-    const die2 = rollDie();
-    const total = die1 + die2;
-    
-    document.getElementById('die1').textContent = die1;
-    document.getElementById('die2').textContent = die2;
-    
-    // Check for life (7 or higher indicates intelligent life)
-    const hasLife = total >= 7;
-    
-    if (hasLife) {
-        document.getElementById('diceResult').textContent = `Life detected! (${total})`;
-        log(`${currentPlayer.name} found intelligent life on a planet! Must battle aliens.`);
-        gameState.currentPlanetHasLife = true;
-    } else {
-        document.getElementById('diceResult').textContent = `No life (${total})`;
-        log(`${currentPlayer.name} found a dead planet.`);
-        gameState.currentPlanetHasLife = false;
+    if (!currentHex || currentHex.type !== 'planet') {
+        log('You must be on a planet to check for life!');
+        return;
     }
     
-    // Enable colonize button
-    document.getElementById('colonizeBtn').disabled = false;
+    // Skip life check for home planets (they're already known)
+    if (currentHex.isHome) {
+        log('This is a home planet, no need to check for life.');
+        return;
+    }
+    
+    // Roll single die and compare to life probability
+    const dieRoll = rollDie();
+    const lifeProbability = currentHex.lifeProbability || 0;
+    
+    document.getElementById('die1').textContent = dieRoll;
+    document.getElementById('die2').textContent = ''; // Hide second die
+    
+    // Check for life: roll must be <= life probability
+    const hasLife = dieRoll <= lifeProbability;
+    
+    if (hasLife) {
+        document.getElementById('diceResult').textContent = `Life detected! (Rolled ${dieRoll} ≤ ${lifeProbability})`;
+        log(`${currentPlayer.name} found intelligent life on ${currentHex.name}! Must battle aliens.`);
+        gameState.currentPlanetHasLife = true;
+        currentHex.hasLife = true;
+        
+        // Trigger battle with aliens
+        battleAliens(currentHex);
+    } else {
+        document.getElementById('diceResult').textContent = `No life (Rolled ${dieRoll} > ${lifeProbability})`;
+        log(`${currentPlayer.name} found a dead planet.`);
+        gameState.currentPlanetHasLife = false;
+        currentHex.hasLife = false;
+        
+        // Enable colonize button for dead planet
+        document.getElementById('colonizeBtn').disabled = false;
+    }
+    
     document.getElementById('checkLifeBtn').disabled = true;
 }
 
@@ -887,18 +901,41 @@ function colonizePlanet() {
     }
 }
 
-function startBattle(opponent, system, planetIndex) {
+// Battle aliens when life is detected
+function battleAliens(planetHex) {
+    gameState.battleState = {
+        opponent: 'aliens',
+        planetQ: planetHex.q,
+        planetR: planetHex.r,
+        playerRolled: false
+    };
+    
+    document.getElementById('battleTitle').textContent = 'Battle Aliens!';
+    document.getElementById('battleDescription').textContent = 
+        `You must defeat the aliens on ${planetHex.name} to colonize this planet!`;
+    document.getElementById('attackerName').textContent = gameState.players[gameState.currentPlayerIndex].name;
+    document.getElementById('defenderName').textContent = 'Aliens';
+    document.getElementById('battleResult').textContent = '';
+    document.getElementById('rollBattleBtn').style.display = 'block';
+    document.getElementById('closeBattleBtn').style.display = 'none';
+    
+    document.getElementById('battleModal').style.display = 'block';
+}
+
+function startBattle(opponent, planetHex) {
     gameState.battleState = {
         opponent: opponent,
-        system: system,
-        planetIndex: planetIndex,
+        planetQ: planetHex.q,
+        planetR: planetHex.r,
         playerRolled: false
     };
     
     document.getElementById('battleTitle').textContent = 
         opponent === 'aliens' ? 'Battle Aliens!' : 'Battle Enemy Colony!';
     document.getElementById('battleDescription').textContent = 
-        `You must defeat the ${opponent} to colonize this planet!`;
+        opponent === 'aliens' 
+            ? `You must defeat the aliens on ${planetHex.name} to colonize this planet!`
+            : `You must defeat the defender on ${planetHex.name} to colonize this planet!`;
     document.getElementById('attackerName').textContent = gameState.players[gameState.currentPlayerIndex].name;
     document.getElementById('defenderName').textContent = opponent === 'aliens' ? 'Aliens' : 'Defender';
     document.getElementById('battleResult').textContent = '';
@@ -911,38 +948,36 @@ function startBattle(opponent, system, planetIndex) {
 function rollBattle() {
     if (gameState.battleState.playerRolled) return;
     
-    // Player rolls
-    const playerDie1 = rollDie();
-    const playerDie2 = rollDie();
-    const playerTotal = playerDie1 + playerDie2;
+    // Roll single die for player (attacker)
+    const playerRoll = rollDie();
     
-    // Opponent rolls
-    const opponentDie1 = rollDie();
-    const opponentDie2 = rollDie();
-    const opponentTotal = opponentDie1 + opponentDie2;
+    // Roll single die for opponent (defender)
+    const opponentRoll = rollDie();
     
-    document.getElementById('attackerDie1').textContent = playerDie1;
-    document.getElementById('attackerDie2').textContent = playerDie2;
-    document.getElementById('attackerTotal').textContent = playerTotal;
+    document.getElementById('attackerDie1').textContent = playerRoll;
+    document.getElementById('attackerDie2').textContent = ''; // Hide second die
+    document.getElementById('attackerTotal').textContent = playerRoll;
     
-    document.getElementById('defenderDie1').textContent = opponentDie1;
-    document.getElementById('defenderDie2').textContent = opponentDie2;
-    document.getElementById('defenderTotal').textContent = opponentTotal;
+    document.getElementById('defenderDie1').textContent = opponentRoll;
+    document.getElementById('defenderDie2').textContent = ''; // Hide second die
+    document.getElementById('defenderTotal').textContent = opponentRoll;
     
     gameState.battleState.playerRolled = true;
     
-    // Determine winner
+    // Determine winner (ties go to attacker)
     let result;
-    if (playerTotal > opponentTotal) {
+    if (playerRoll >= opponentRoll) {
         result = '🎉 You win! Planet colonized!';
-        placeColony(gameState.battleState.system, gameState.battleState.planetIndex, true);
-    } else if (playerTotal < opponentTotal) {
+        const currentHex = BOARD_STRUCTURE.find(h => 
+            h.q === gameState.battleState.planetQ && 
+            h.r === gameState.battleState.planetR
+        );
+        if (currentHex) {
+            placeColony(currentHex, true);
+        }
+    } else {
         result = '😞 You lost! Cannot colonize.';
         log(`${gameState.players[gameState.currentPlayerIndex].name} lost the battle.`);
-    } else {
-        result = '🤝 Tie! Roll again.';
-        gameState.battleState.playerRolled = false;
-        return;
     }
     
     document.getElementById('battleResult').textContent = result;
@@ -956,20 +991,33 @@ function closeBattle() {
     updateUI();
 }
 
-function placeColony(system, planetIndex, hadLife) {
+function placeColony(planetHex, hadLife) {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
-    system.colonies[planetIndex] = {
-        playerId: currentPlayer.id,
-        hadLife: hadLife
-    };
+    // Mark planet as colonized
+    planetHex.colonizedBy = currentPlayer.id;
+    planetHex.hadLife = hadLife;
     
     currentPlayer.colonies++;
+    
+    // Update score
+    const points = hadLife ? 2 : 1;
+    currentPlayer.score = (currentPlayer.score || 0) + points;
+    
     gameState.hasColonizedThisTurn = true;
     
-    log(`${currentPlayer.name} colonized a ${hadLife ? 'inhabited' : 'dead'} planet in ${system.name}!`);
+    log(`${currentPlayer.name} colonized ${planetHex.name}! ${hadLife ? '+2 points (had life)' : '+1 point (dead planet)'}`);
     
     document.getElementById('colonizeBtn').disabled = true;
+    
+    // Send colonize message via WebSocket
+    sendWebSocketMessage({
+        type: 'colonize',
+        player_index: currentPlayer.id,
+        planet_q: planetHex.q,
+        planet_r: planetHex.r,
+        had_life: hadLife
+    });
     
     // Check if game should end
     if (currentPlayer.colonies >= currentPlayer.maxColonies) {

@@ -90,21 +90,21 @@ class GameConsumer(AsyncWebsocketConsumer):
         )
     
     async def handle_check_life(self, data):
-        """Handle checking for life on a planet"""
-        # Roll dice on server
-        die1 = random.randint(1, 6)
-        die2 = random.randint(1, 6)
-        total = die1 + die2
-        has_life = total >= 7
+        """Handle checking for life on a planet - single die roll"""
+        # Roll single die on server
+        die_roll = random.randint(1, 6)
+        life_probability = data.get('life_probability', 0)
+        has_life = die_roll <= life_probability
+        
+        logger.info(f"[CHECK_LIFE] Rolled {die_roll}, probability {life_probability}, has_life={has_life}")
         
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'life_checked',
                 'player_index': data['player_index'],
-                'die1': die1,
-                'die2': die2,
-                'total': total,
+                'die_roll': die_roll,
+                'life_probability': life_probability,
                 'has_life': has_life
             }
         )
@@ -123,28 +123,25 @@ class GameConsumer(AsyncWebsocketConsumer):
         )
     
     async def handle_battle(self, data):
-        """Handle battle (roll dice for both sides)"""
-        # Player dice
-        player_die1 = random.randint(1, 6)
-        player_die2 = random.randint(1, 6)
-        player_total = player_die1 + player_die2
+        """Handle battle - single die roll, ties go to attacker"""
+        # Player (attacker) rolls single die
+        player_roll = random.randint(1, 6)
         
-        # Opponent dice
-        opponent_die1 = random.randint(1, 6)
-        opponent_die2 = random.randint(1, 6)
-        opponent_total = opponent_die1 + opponent_die2
+        # Opponent (defender) rolls single die
+        opponent_roll = random.randint(1, 6)
         
-        winner = 'player' if player_total > opponent_total else ('opponent' if opponent_total > player_total else 'tie')
+        # Ties go to attacker
+        winner = 'player' if player_roll >= opponent_roll else 'opponent'
+        
+        logger.info(f"[BATTLE] Player rolled {player_roll}, Opponent rolled {opponent_roll}, Winner: {winner}")
         
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'battle_result',
                 'player_index': data['player_index'],
-                'player_dice': [player_die1, player_die2],
-                'player_total': player_total,
-                'opponent_dice': [opponent_die1, opponent_die2],
-                'opponent_total': opponent_total,
+                'player_roll': player_roll,
+                'opponent_roll': opponent_roll,
                 'winner': winner,
                 'battle_type': data.get('battle_type', 'aliens')
             }
