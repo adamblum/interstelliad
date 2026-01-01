@@ -67,6 +67,18 @@ CSRF_TRUSTED_ORIGINS = [
 if 'RAILWAY_PUBLIC_DOMAIN' in os.environ:
     CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['RAILWAY_PUBLIC_DOMAIN']}")
 
+# Also check for Railway's static domain pattern
+railway_domain = os.environ.get('RAILWAY_STATIC_URL', '').replace('http://', 'https://')
+if railway_domain:
+    CSRF_TRUSTED_ORIGINS.append(railway_domain)
+
+# Add the actual Railway domain (fallback)
+if any('railway.app' in str(host) for host in ALLOWED_HOSTS):
+    CSRF_TRUSTED_ORIGINS.append('https://*.railway.app')
+    
+# Add your specific Railway domain
+CSRF_TRUSTED_ORIGINS.append('https://interstelliad.up.railway.app')
+
 
 ROOT_URLCONF = 'interstelliad_project.urls'
 
