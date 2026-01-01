@@ -43,17 +43,22 @@ def join_room(request):
         player_name = request.POST.get('player_name')
         home_planet = request.POST.get('home_planet')
         
+        print(f"[JOIN_ROOM] Player '{player_name}' joining room '{room_code}' as '{home_planet}'")
+        
         try:
             room = GameRoom.objects.get(room_code=room_code)
             
             if room.is_full():
+                print(f"[JOIN_ROOM] Room {room_code} is full")
                 return JsonResponse({'success': False, 'error': 'Room is full'})
             
             if room.started:
+                print(f"[JOIN_ROOM] Room {room_code} already started")
                 return JsonResponse({'success': False, 'error': 'Game already started'})
             
             # Check if planet is taken
             if room.players.filter(home_planet=home_planet).exists():
+                print(f"[JOIN_ROOM] Planet {home_planet} already taken in room {room_code}")
                 return JsonResponse({'success': False, 'error': 'Planet already taken'})
             
             player_index = room.players.count()
@@ -64,14 +69,28 @@ def join_room(request):
                 player_index=player_index
             )
             
+            player_count = room.players.count()
+            print(f"[JOIN_ROOM] Player {player_name} joined as index {player_index}. Total players: {player_count}")
+            
+            # Auto-start game when 2 players join
+            auto_start = False
+            if player_count >= 2 and not room.started:
+                room.started = True
+                room.save()
+                auto_start = True
+                print(f"[JOIN_ROOM] AUTO-STARTING game {room_code} with {player_count} players")
+            
             return JsonResponse({
                 'success': True,
                 'room_code': room_code,
                 'player_index': player_index,
-                'can_start': room.can_start()
+                'can_start': room.can_start(),
+                'auto_start': auto_start,
+                'player_count': player_count
             })
             
         except GameRoom.DoesNotExist:
+            print(f"[JOIN_ROOM] Room {room_code} not found")
             return JsonResponse({'success': False, 'error': 'Room not found'})
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})

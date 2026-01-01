@@ -243,12 +243,34 @@ function drawStar(x, y, size, color) {
 
 // Initialize game
 function initGame() {
+    console.log('[INIT] Initializing game...');
     initCanvas();
     drawBoard();
     
     // Role selection
-    document.getElementById('createGameBtn').addEventListener('click', showOrganizerSetup);
-    document.getElementById('joinGameBtn').addEventListener('click', showPlayerLogin);
+    const joinGameBtn = document.getElementById('joinGameBtn');
+    const createGameBtn = document.getElementById('createGameBtn');
+    
+    console.log('[INIT] Join Game button:', joinGameBtn);
+    console.log('[INIT] Create Game button:', createGameBtn);
+    
+    if (joinGameBtn) {
+        joinGameBtn.addEventListener('click', () => {
+            console.log('[INIT] Join Game button clicked!');
+            showPlayerLogin();
+        });
+    } else {
+        console.error('[INIT] Join Game button not found!');
+    }
+    
+    if (createGameBtn) {
+        createGameBtn.addEventListener('click', () => {
+            console.log('[INIT] Create Game button clicked!');
+            showOrganizerSetup();
+        });
+    } else {
+        console.error('[INIT] Create Game button not found!');
+    }
     
     // Organizer controls
     document.getElementById('createGame').addEventListener('click', createGame);
@@ -300,9 +322,11 @@ function showOrganizerSetup() {
 }
 
 function showPlayerLogin() {
+    console.log('[SHOW_PLAYER_LOGIN] Showing player login screen');
     gameState.isOrganizer = false;
     document.getElementById('roleSelection').style.display = 'none';
     document.getElementById('playerLogin').style.display = 'block';
+    console.log('[SHOW_PLAYER_LOGIN] Player login screen should now be visible');
 }
 
 function createGame() {
@@ -366,6 +390,8 @@ function joinGameAsPlayer() {
     // Get CSRF token
     const csrftoken = getCookie('csrftoken');
     
+    console.log('[JOIN] Attempting to join room:', roomCodeInput, 'as', playerName, planet);
+    
     // Call Django backend to join room
     fetch('/join-room/', {
         method: 'POST',
@@ -377,11 +403,14 @@ function joinGameAsPlayer() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('[JOIN] Join response:', data);
         if (data.success) {
             roomCode = data.room_code;
             myPlayerIndex = data.player_index;
             gameState.currentPlayerName = playerName;
             gameState.currentPlayerPlanet = planet;
+            
+            console.log('[JOIN] Joined successfully. Player index:', myPlayerIndex, 'Player count:', data.player_count);
             
             document.getElementById('playerLogin').style.display = 'none';
             document.getElementById('playerJoin').style.display = 'block';
@@ -400,8 +429,16 @@ function joinGameAsPlayer() {
                 color: PLAYER_COLORS[myPlayerIndex]
             });
             
-            // Poll for room status
-            pollRoomStatus();
+            // If game auto-started (2+ players), trigger game start
+            if (data.auto_start) {
+                console.log('[JOIN] Game auto-starting!');
+                setTimeout(() => {
+                    startGameFromLobby();
+                }, 1000);
+            } else {
+                // Poll for room status
+                pollRoomStatus();
+            }
             
             log(`Joined game! Your home planet is ${planet}`);
         } else {
@@ -409,7 +446,7 @@ function joinGameAsPlayer() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('[JOIN] Error:', error);
         alert('Failed to join game');
     });
 }
@@ -419,20 +456,24 @@ function pollRoomStatus() {
         fetch(`/room/${roomCode}/status/`)
             .then(response => response.json())
             .then(data => {
+                console.log('[POLL] Room status:', data);
                 if (data.success) {
                     gameState.joinedPlayers = data.players;
                     updateJoinedPlayersList();
                     
-                    if (gameState.isOrganizer && data.can_start) {
+                    if (gameState.isOrganizer && data.can_start && !data.started) {
                         document.getElementById('startGame').style.display = 'block';
                     }
                     
+                    // If game has started, trigger game start for all players
                     if (data.started) {
+                        console.log('[POLL] Game has started! Triggering game start...');
                         clearInterval(interval);
+                        startGameFromLobby();
                     }
                 }
             })
-            .catch(error => console.error('Error polling room:', error));
+            .catch(error => console.error('[POLL] Error polling room:', error));
     }, 2000);
 }
 
@@ -466,6 +507,53 @@ function updateJoinedPlayersList() {
         waiting.textContent = `Waiting for ${remaining} more player${remaining > 1 ? 's' : ''}...`;
         container.appendChild(waiting);
     }
+}
+
+function startGameFromLobby() {
+    console.log('[START_GAME_FROM_LOBBY] Initializing game...');
+    console.log('[START_GAME_FROM_LOBBY] Joined players:', gameState.joinedPlayers);
+    
+    // Initialize players from room status
+    fetch(`/room/${roomCode}/status/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.started) {
+                console.log('[START_GAME_FROM_LOBBY] Room data:', data);
+                
+                // Initialize players from joined list
+                gameState.players = data.players.map(jp => {
+                    const homePlanet = HOME_PLANETS[jp.home_planet];
+                    return {
+                        id: jp.player_index,
+                        name: jp.name,
+                        planet: jp.home_planet,
+                        color: PLAYER_COLORS[jp.player_index],
+                        position: { q: homePlanet.q, r: homePlanet.r },
+                        colonies: 0,
+                        maxColonies: 10,
+                        score: 0
+                    };
+                });
+                
+                console.log('[START_GAME_FROM_LOBBY] Players initialized:', gameState.players);
+                
+                // Initialize board
+                initializeBoard();
+                
+                // Notify all players via WebSocket
+                sendWebSocketMessage({
+                    type: 'start_game',
+                    players: gameState.players,
+                    board_state: BOARD_STRUCTURE
+                });
+                
+                // Start game locally
+                actuallyStartGame();
+            }
+        })
+        .catch(error => {
+            console.error('[START_GAME_FROM_LOBBY] Error:', error);
+        });
 }
 
 function startGame() {

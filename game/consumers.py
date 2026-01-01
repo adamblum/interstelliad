@@ -1,12 +1,17 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_code = self.scope['url_route']['kwargs']['room_code']
         self.room_group_name = f'game_{self.room_code}'
+        
+        logger.info(f"[WS_CONNECT] Client connecting to room {self.room_code}")
         
         # Join room group
         await self.channel_layer.group_add(
@@ -15,8 +20,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         )
         
         await self.accept()
+        logger.info(f"[WS_CONNECT] Client connected to room {self.room_code}")
     
     async def disconnect(self, close_code):
+        logger.info(f"[WS_DISCONNECT] Client disconnecting from room {self.room_code}")
         # Leave room group
         await self.channel_layer.group_discard(
             self.room_group_name,
@@ -26,6 +33,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message_type = data.get('type')
+        
+        logger.info(f"[WS_RECEIVE] Room {self.room_code} received message type: {message_type}")
         
         if message_type == 'player_join':
             await self.handle_player_join(data)
@@ -44,6 +53,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     
     async def handle_player_join(self, data):
         """Handle player joining the game"""
+        logger.info(f"[PLAYER_JOIN] {data['player_name']} joined room {self.room_code}")
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -57,6 +67,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     
     async def handle_start_game(self, data):
         """Handle game start"""
+        logger.info(f"[START_GAME] Room {self.room_code} starting with {len(data['players'])} players")
         await self.channel_layer.group_send(
             self.room_group_name,
             {
