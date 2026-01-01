@@ -1,0 +1,212 @@
+[
+  {
+    "star": "Struve 2398",
+    "col": 22,
+    "row": 2,
+    "planet": "a",
+    "life_probability": 5
+  },
+  {
+    "star": "Struve 2398",
+    "col": 22,
+    "row": 2,
+    "planet": "b",
+    "life_probability": 5
+  },
+  {
+    "star": "Lalande 21185",
+    "col": 5,
+    "row": 3,
+    "planet": "b",
+    "life_probability": 5
+  },
+  {
+    "star": "Lalande 21185",
+    "col": 5,
+    "row": 3,
+    "planet": "c",
+    "life_probability": 5
+  },
+  {
+    "star": "Barnard\u2019s Star",
+    "col": 19,
+    "row": 9,
+    "planet": "b",
+    "life_probability": 2
+  },
+  {
+    "star": "Ross 128",
+    "col": 1,
+    "row": 9,
+    "planet": "b",
+    "life_probability": 4
+  },
+  {
+    "star": "Wolf 359",
+    "col": 5,
+    "row": 9,
+    "planet": "b",
+    "life_probability": 3
+  },
+  {
+    "star": "Wolf 359",
+    "col": 5,
+    "row": 9,
+    "planet": "c",
+    "life_probability": 2
+  },
+  {
+    "star": "Groombridge 34",
+    "col": 23,
+    "row": 11,
+    "planet": "x",
+    "life_probability": 4
+  },
+  {
+    "star": "Ross 248",
+    "col": 23,
+    "row": 12,
+    "planet": "x",
+    "life_probability": 3
+  },
+  {
+    "star": "A/P Centauri",
+    "col": 13,
+    "row": 14,
+    "planet": "b",
+    "life_probability": 4
+  },
+  {
+    "star": "A/P Centauri",
+    "col": 13,
+    "row": 14,
+    "planet": "c",
+    "life_probability": 2
+  },
+  {
+    "star": "A/P Centauri",
+    "col": 13,
+    "row": 14,
+    "planet": "x",
+    "life_probability": 3
+  },
+  {
+    "star": "Sirius",
+    "col": 5,
+    "row": 15,
+    "planet": "x",
+    "life_probability": 3
+  },
+  {
+    "star": "Ross 154",
+    "col": 20,
+    "row": 17,
+    "planet": "x",
+    "life_probability": 3
+  },
+  {
+    "star": "E Eridani",
+    "col": 4,
+    "row": 19,
+    "planet": "b",
+    "life_probability": 4
+  },
+  {
+    "star": "E Eridani",
+    "col": 4,
+    "row": 19,
+    "planet": "c",
+    "life_probability": 2
+  },
+  {
+    "star": "Tau Ceti",
+    "col": 11,
+    "row": 19,
+    "planet": "b",
+    "life_probability": 2
+  },
+  {
+    "star": "Tau Ceti",
+    "col": 11,
+    "row": 19,
+    "planet": "c",
+    "life_probability": 2
+  },
+  {
+    "star": "Tau Ceti",
+    "col": 11,
+    "row": 19,
+    "planet": "d",
+    "life_probability": 2
+  },
+  {
+    "star": "Tau Ceti",
+    "col": 11,
+    "row": 19,
+    "planet": "e",
+    "life_probability": 4
+  },
+  {
+    "star": "Tau Ceti",
+    "col": 11,
+    "row": 19,
+    "planet": "f",
+    "life_probability": 4
+  },
+  {
+    "star": "UV Ceti",
+    "col": 12,
+    "row": 20,
+    "planet": "a",
+    "life_probability": 1
+  },
+  {
+    "star": "UV Ceti",
+    "col": 12,
+    "row": 20,
+    "planet": "b",
+    "life_probability": 1
+  },
+  {
+    "star": "Lacaille 9352",
+    "col": 17,
+    "row": 20,
+    "planet": "b",
+    "life_probability": 2
+  },
+  {
+    "star": "Lacaille 9352",
+    "col": 17,
+    "row": 20,
+    "planet": "c",
+    "life_probability": 3
+  },
+  {
+    "star": "Sol",
+    "col": 13,
+    "row": 8,
+    "planet": "Earth",
+    "life_probability": null
+  },
+  {
+    "star": "Sol",
+    "col": 13,
+    "row": 8,
+    "planet": "Mars",
+    "life_probability": null
+  },
+  {
+    "star": "Sol",
+    "col": 13,
+    "row": 8,
+    "planet": "Jupiter",
+    "life_probability": null
+  },
+  {
+    "star": "Sol",
+    "col": 13,
+    "row": 8,
+    "planet": "The Belt",
+    "life_probability": null
+  }
+]

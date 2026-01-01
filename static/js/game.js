@@ -24,44 +24,113 @@ const gameState = {
 // Player colors
 const PLAYER_COLORS = ['#ff4444', '#4444ff', '#44ff44', '#ffff44'];
 
-// Home planets and their starting positions
+// Home planets and their starting positions (Sol system at col 13, row 8)
 const HOME_PLANETS = {
-    'Earth': { q: 0, r: 0, emoji: '🌍', planetIndex: 0 },
-    'Mars': { q: 0, r: 0, emoji: '🔴', planetIndex: 1 },
-    'Belt': { q: 0, r: 0, emoji: '☄️', planetIndex: 2 },
-    'Jupiter': { q: 1, r: -1, emoji: '🪐', planetIndex: 0 }
+    'Earth': { q: 13 - 4, r: 8, emoji: '🌍', planetIndex: 0 },
+    'Mars': { q: 13 - 4, r: 8, emoji: '🔴', planetIndex: 1 },
+    'Jupiter': { q: 13 - 4, r: 8, emoji: '🪐', planetIndex: 2 },
+    'The Belt': { q: 13 - 4, r: 8, emoji: '☄️', planetIndex: 3 }
 };
 
 // Canvas and context
 let canvas, ctx;
 
 // Hex grid configuration
-const HEX_RADIUS = 40;
+const HEX_RADIUS = 20; // Smaller to fit the large board
 const HEX_WIDTH = Math.sqrt(3) * HEX_RADIUS;
 const HEX_HEIGHT = 2 * HEX_RADIUS;
 
-// Board structure: Star systems with planets
-const BOARD_STRUCTURE = [
-    // Center star systems - Sol (with Earth, Mars, Belt)
-    { q: 0, r: 0, name: 'Sol', planets: 3, color: '#ffeb3b', planetNames: ['Earth', 'Mars', 'Belt'] },
-    { q: 1, r: -1, name: 'Alpha Centauri', planets: 2, color: '#ff9800', planetNames: ['Jupiter', 'AC-b'] },
-    { q: 1, r: 0, name: 'Sirius', planets: 4, color: '#2196f3' },
-    { q: 0, r: 1, name: 'Betelgeuse', planets: 3, color: '#f44336' },
-    { q: -1, r: 1, name: 'Vega', planets: 2, color: '#e1f5fe' },
-    { q: -1, r: 0, name: 'Proxima', planets: 3, color: '#ff5722' },
-    { q: 2, r: -2, name: 'Polaris', planets: 2, color: '#9c27b0' },
-    { q: 2, r: -1, name: 'Rigel', planets: 3, color: '#03a9f4' },
-    { q: 2, r: 0, name: 'Antares', planets: 2, color: '#e91e63' },
-    { q: 1, r: 1, name: 'Aldebaran', planets: 3, color: '#ff6b35' },
-    { q: 0, r: 2, name: 'Arcturus', planets: 2, color: '#ffc107' },
-    { q: -1, r: 2, name: 'Spica', planets: 3, color: '#00bcd4' },
-    { q: -2, r: 2, name: 'Regulus', planets: 2, color: '#ffeb3b' },
-    { q: -2, r: 1, name: 'Deneb', planets: 3, color: '#8bc34a' },
-    { q: -2, r: 0, name: 'Altair', planets: 2, color: '#cddc39' },
-    { q: -1, r: -1, name: 'Fomalhaut', planets: 3, color: '#00acc1' },
-    { q: 0, r: -1, name: 'Procyon', planets: 2, color: '#ffb74d' },
-    { q: 1, r: -2, name: 'Canopus', planets: 3, color: '#fff9c4' }
+// Board structure from the PDF - using offset coordinates (col, row)
+// Converting to axial coordinates for hex math: q = col - (row - (row&1)) / 2, r = row
+const STAR_SYSTEMS_DATA = [
+    { star: "Struve 2398", col: 22, row: 2, planets: [{name: "a", life: 5}, {name: "b", life: 5}] },
+    { star: "Lalande 21185", col: 5, row: 3, planets: [{name: "b", life: 5}, {name: "c", life: 5}] },
+    { star: "Barnard's Star", col: 19, row: 9, planets: [{name: "b", life: 2}] },
+    { star: "Ross 128", col: 1, row: 9, planets: [{name: "b", life: 4}] },
+    { star: "Wolf 359", col: 5, row: 9, planets: [{name: "b", life: 3}, {name: "c", life: 2}] },
+    { star: "Groombridge 34", col: 23, row: 11, planets: [{name: "x", life: 4}] },
+    { star: "Ross 248", col: 23, row: 12, planets: [{name: "x", life: 3}] },
+    { star: "A/P Centauri", col: 13, row: 14, planets: [{name: "b", life: 4}, {name: "c", life: 2}, {name: "x", life: 3}] },
+    { star: "Sirius", col: 5, row: 15, planets: [{name: "x", life: 3}] },
+    { star: "Ross 154", col: 20, row: 17, planets: [{name: "x", life: 3}] },
+    { star: "E Eridani", col: 4, row: 19, planets: [{name: "b", life: 4}, {name: "c", life: 2}] },
+    { star: "Tau Ceti", col: 11, row: 19, planets: [{name: "b", life: 2}, {name: "c", life: 2}, {name: "d", life: 2}, {name: "e", life: 4}, {name: "f", life: 4}] },
+    { star: "UV Ceti", col: 12, row: 20, planets: [{name: "a", life: 1}, {name: "b", life: 1}] },
+    { star: "Lacaille 9352", col: 17, row: 20, planets: [{name: "b", life: 2}, {name: "c", life: 3}] },
+    { star: "Sol", col: 13, row: 8, planets: [{name: "Earth", life: null, isHome: true}, {name: "Mars", life: null, isHome: true}, {name: "Jupiter", life: null, isHome: true}, {name: "The Belt", life: null, isHome: true}] }
 ];
+
+// Convert offset coordinates to axial hex coordinates
+function offsetToAxial(col, row) {
+    const q = col - (row - (row & 1)) / 2;
+    const r = row;
+    return { q, r };
+}
+
+// Generate full board structure with stars and planets as separate hexes
+const BOARD_STRUCTURE = [];
+
+// Color palette for stars
+const STAR_COLORS = {
+    "Struve 2398": "#9c27b0",
+    "Lalande 21185": "#ff9800",
+    "Barnard's Star": "#f44336",
+    "Ross 128": "#e91e63",
+    "Wolf 359": "#ff5722",
+    "Groombridge 34": "#8bc34a",
+    "Ross 248": "#cddc39",
+    "A/P Centauri": "#ffc107",
+    "Sirius": "#2196f3",
+    "Ross 154": "#00bcd4",
+    "E Eridani": "#03a9f4",
+    "Tau Ceti": "#ffeb3b",
+    "UV Ceti": "#e1f5fe",
+    "Lacaille 9352": "#00acc1",
+    "Sol": "#ffeb3b"
+};
+
+// Build board with stars and their planets as adjacent hexes
+STAR_SYSTEMS_DATA.forEach(system => {
+    const starPos = offsetToAxial(system.col, system.row);
+    const color = STAR_COLORS[system.star] || '#888888';
+    
+    // Add the star system itself
+    BOARD_STRUCTURE.push({
+        q: starPos.q,
+        r: starPos.r,
+        type: 'star',
+        name: system.star,
+        color: color,
+        planetCount: system.planets.length
+    });
+    
+    // Add planets as adjacent hexes (distributed around the star)
+    const directions = [
+        {q: 1, r: 0},   // East
+        {q: 0, r: 1},   // Southeast
+        {q: -1, r: 1},  // Southwest
+        {q: -1, r: 0},  // West
+        {q: 0, r: -1},  // Northwest
+        {q: 1, r: -1}   // Northeast
+    ];
+    
+    system.planets.forEach((planet, index) => {
+        const dir = directions[index % 6];
+        BOARD_STRUCTURE.push({
+            q: starPos.q + dir.q,
+            r: starPos.r + dir.r,
+            type: 'planet',
+            name: `${system.star} ${planet.name}`,
+            shortName: planet.name,
+            parentStar: system.star,
+            parentQ: starPos.q,
+            parentR: starPos.r,
+            lifeProbability: planet.life,
+            color: color,
+            isHome: planet.isHome || false
+        });
+    });
+});
 
 // Initialize canvas
 function initCanvas() {
@@ -136,96 +205,101 @@ function drawBoard() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw stars in background
-    drawStars();
+    drawBackgroundStars();
     
-    // Draw hexes for each star system
-    BOARD_STRUCTURE.forEach(system => {
-        const pos = hexToPixel(system.q, system.r);
+    // Draw all hexes (stars and planets)
+    BOARD_STRUCTURE.forEach(hex => {
+        const pos = hexToPixel(hex.q, hex.r);
         
         // Check if hex is selected
         const isSelected = gameState.selectedHex && 
-                          gameState.selectedHex.q === system.q && 
-                          gameState.selectedHex.r === system.r;
+                          gameState.selectedHex.q === hex.q && 
+                          gameState.selectedHex.r === hex.r;
         
         // Check if player is here
-        const playerHere = gameState.players.find(p => p.position.q === system.q && p.position.r === system.r);
+        const playerHere = gameState.players.find(p => 
+            p.position && p.position.q === hex.q && p.position.r === hex.r
+        );
         
-        const strokeColor = isSelected ? '#00ff00' : (playerHere ? '#ffff00' : '#ffffff');
-        
-        drawHex(pos.x, pos.y, HEX_RADIUS, system.color + '33', strokeColor);
-        
-        // Draw star
-        drawStar(pos.x, pos.y, 8, system.color);
-        
-        // Draw system name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(system.name, pos.x, pos.y - 20);
-        
-        // Draw planets
-        const planetRadius = 6;
-        const orbitRadius = 25;
-        for (let i = 0; i < system.planets; i++) {
-            const angle = (Math.PI * 2 / system.planets) * i;
-            const px = pos.x + orbitRadius * Math.cos(angle);
-            const py = pos.y + orbitRadius * Math.sin(angle);
+        if (hex.type === 'star') {
+            // Draw star system hex
+            const strokeColor = isSelected ? '#00ff00' : '#666666';
+            drawHex(pos.x, pos.y, HEX_RADIUS, hex.color + '44', strokeColor);
+            
+            // Draw star glow
+            drawStarGlow(pos.x, pos.y, 10, hex.color);
+            
+            // Draw system name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(hex.name, pos.x, pos.y + 4);
+            
+        } else if (hex.type === 'planet') {
+            // Draw planet hex
+            const strokeColor = isSelected ? '#00ff00' : (playerHere ? '#ffff00' : '#444444');
             
             // Check if planet is colonized
-            const colony = system.colonies && system.colonies[i];
-            const planetColor = colony ? PLAYER_COLORS[colony.playerId] : '#888888';
+            const isColonized = hex.colonizedBy !== undefined;
+            const bgColor = isColonized ? PLAYER_COLORS[hex.colonizedBy] + '66' : hex.color + '22';
             
-            ctx.beginPath();
-            ctx.arc(px, py, planetRadius, 0, Math.PI * 2);
-            ctx.fillStyle = planetColor;
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+            drawHex(pos.x, pos.y, HEX_RADIUS, bgColor, strokeColor);
+            
+            // Draw life probability number
+            if (hex.lifeProbability !== null) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(hex.lifeProbability, pos.x, pos.y + 5);
+            }
+            
+            // Draw planet name label
+            ctx.fillStyle = '#aaaaaa';
+            ctx.font = '8px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(hex.shortName, pos.x, pos.y - 12);
             
             // Draw home planet indicator
-            if (colony && colony.isHome) {
-                const player = gameState.players.find(p => p.id === colony.playerId);
-                if (player) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(HOME_PLANETS[player.planet].emoji, px, py + 3);
-                }
+            if (hex.isHome) {
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('🏠', pos.x, pos.y - 20);
             }
-            // Draw alien indicator if planet has life (and not home)
-            else if (colony && colony.hadLife) {
-                ctx.fillStyle = '#ff00ff';
-                ctx.font = 'bold 10px Arial';
-                ctx.fillText('👾', px, py + 3);
+            
+            // Draw colony indicator
+            if (isColonized) {
+                ctx.fillStyle = PLAYER_COLORS[hex.colonizedBy];
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText('⬢', pos.x, pos.y + 20);
             }
         }
         
         // Draw player ships
         if (playerHere) {
             const shipX = pos.x;
-            const shipY = pos.y + 15;
+            const shipY = pos.y + (hex.type === 'star' ? 15 : 25);
             ctx.fillStyle = PLAYER_COLORS[playerHere.id];
-            ctx.font = '20px Arial';
+            ctx.font = '18px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('🚀', shipX, shipY);
         }
     });
 }
 
-function drawStars() {
+function drawBackgroundStars() {
     ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
         const x = Math.random() * canvas.width;
         const y = Math.random() * canvas.height;
-        const size = Math.random() * 2;
+        const size = Math.random() * 1.5;
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-function drawStar(x, y, size, color) {
+function drawStarGlow(x, y, size, color) {
+    // Star center
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x, y, size, 0, Math.PI * 2);
@@ -233,12 +307,33 @@ function drawStar(x, y, size, color) {
     
     // Star glow
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
-    gradient.addColorStop(0, color + 'aa');
+    gradient.addColorStop(0, color + 'cc');
     gradient.addColorStop(1, color + '00');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(x, y, size * 2, 0, Math.PI * 2);
     ctx.fill();
+}
+
+// Draw a hexagon
+function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 6;
+        const hx = x + radius * Math.cos(angle);
+        const hy = y + radius * Math.sin(angle);
+        if (i === 0) {
+            ctx.moveTo(hx, hy);
+        } else {
+            ctx.lineTo(hx, hy);
+        }
+    }
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 }
 
 // Initialize game
