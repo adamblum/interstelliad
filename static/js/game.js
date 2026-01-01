@@ -223,7 +223,7 @@ function drawBoard() {
         
         if (hex.type === 'star') {
             // Draw star system hex
-            const strokeColor = isSelected ? '#00ff00' : '#666666';
+            const strokeColor = isSelected ? '#00ff00' : '#888888';
             drawHex(pos.x, pos.y, HEX_RADIUS, hex.color + '44', strokeColor);
             
             // Draw star glow
@@ -235,9 +235,14 @@ function drawBoard() {
             ctx.textAlign = 'center';
             ctx.fillText(hex.name, pos.x, pos.y + 4);
             
+            // Draw coordinates
+            ctx.fillStyle = '#666666';
+            ctx.font = '7px Arial';
+            ctx.fillText(`(${hex.q},${hex.r})`, pos.x, pos.y - 15);
+            
         } else if (hex.type === 'planet') {
             // Draw planet hex
-            const strokeColor = isSelected ? '#00ff00' : (playerHere ? '#ffff00' : '#444444');
+            const strokeColor = isSelected ? '#00ff00' : (playerHere ? '#ffff00' : '#666666');
             
             // Check if planet is colonized
             const isColonized = hex.colonizedBy !== undefined;
@@ -258,6 +263,11 @@ function drawBoard() {
             ctx.font = '8px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(hex.shortName, pos.x, pos.y - 12);
+            
+            // Draw coordinates
+            ctx.fillStyle = '#444444';
+            ctx.font = '6px Arial';
+            ctx.fillText(`(${hex.q},${hex.r})`, pos.x, pos.y + 18);
             
             // Draw home planet indicator
             if (hex.isHome) {
@@ -316,7 +326,7 @@ function drawStarGlow(x, y, size, color) {
 }
 
 // Draw a hexagon
-function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
+function drawHex(x, y, radius, fillColor, strokeColor = '#888888') {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
         const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -332,7 +342,7 @@ function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
     ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5; // Make lines more visible
     ctx.stroke();
 }
 
@@ -378,6 +388,11 @@ function initGame() {
     // Planet selection
     document.querySelectorAll('.planet-option').forEach(option => {
         option.addEventListener('click', function() {
+            // Don't allow selecting taken planets
+            if (this.classList.contains('taken')) {
+                return;
+            }
+            
             document.querySelectorAll('.planet-option').forEach(o => o.classList.remove('selected'));
             this.classList.add('selected');
             gameState.currentPlayerPlanet = this.dataset.planet;
@@ -391,6 +406,23 @@ function initGame() {
         const playerName = this.value.trim();
         const hasPlanet = gameState.currentPlayerPlanet !== null;
         document.getElementById('joinGame').disabled = !playerName || !hasPlanet;
+    });
+    
+    // Room code input - fetch room status to show taken planets
+    document.getElementById('roomCodeInput').addEventListener('input', function() {
+        const roomCodeInput = this.value.trim().toUpperCase();
+        if (roomCodeInput.length >= 6) {
+            // Fetch room status to see which planets are taken
+            fetch(`/room-status/${roomCodeInput}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('[ROOM_CODE_INPUT] Room status:', data);
+                        updateAvailablePlanets(data.players);
+                    }
+                })
+                .catch(error => console.error('[ROOM_CODE_INPUT] Error fetching room status:', error));
+        }
     });
     
     // Game controls
@@ -431,6 +463,9 @@ function showPlayerLogin() {
     document.getElementById('roleSelection').style.display = 'none';
     document.getElementById('playerLogin').style.display = 'block';
     console.log('[SHOW_PLAYER_LOGIN] Player login screen should now be visible');
+    
+    // Fetch room status when joiner enters room code to see taken planets
+    // (will be called after entering room code in another function)
 }
 
 function createGame() {
@@ -570,6 +605,7 @@ function pollRoomStatus() {
                 if (data.success) {
                     gameState.joinedPlayers = data.players;
                     updateJoinedPlayersList();
+                    updateAvailablePlanets(data.players);
                     
                     if (gameState.isOrganizer && data.can_start && !data.started) {
                         document.getElementById('startGame').style.display = 'block';
@@ -585,6 +621,29 @@ function pollRoomStatus() {
             })
             .catch(error => console.error('[POLL] Error polling room:', error));
     }, 2000);
+}
+
+function updateAvailablePlanets(players) {
+    // Get list of taken planets
+    const takenPlanets = players.map(p => p.home_planet);
+    
+    console.log('[UPDATE_PLANETS] Taken planets:', takenPlanets);
+    
+    // Update planet options
+    document.querySelectorAll('.planet-option').forEach(option => {
+        const planet = option.dataset.planet;
+        if (takenPlanets.includes(planet)) {
+            option.classList.add('taken');
+            option.style.opacity = '0.3';
+            option.style.cursor = 'not-allowed';
+            option.style.filter = 'grayscale(100%)';
+        } else {
+            option.classList.remove('taken');
+            option.style.opacity = '1';
+            option.style.cursor = 'pointer';
+            option.style.filter = 'none';
+        }
+    });
 }
 
 function updateJoinedPlayersList() {
