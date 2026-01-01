@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interstelliad - Space Colonization Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>🚀 Interstelliad</h1>
+            <p class="subtitle">A Space Colonization Game</p>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="game-setup" id="gameSetup">
+                    <h2>Game Setup</h2>
+                    
+                    <div id="organizerSetup">
+                        <h3>Game Organizer</h3>
+                        <label>Number of Players:</label>
+                        <select id="playerCount">
+                            <option value="2">2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4">4 Players</option>
+                        </select>
+                        <button id="createGame" class="btn-primary">Create Game</button>
+                    </div>
+
+                    <div id="playerJoin" style="display: none;">
+                        <h3>Join Game</h3>
+                        <p>Waiting for players to join...</p>
+                        <div id="joinedPlayers"></div>
+                        <button id="startGame" class="btn-primary" style="display: none;">Start Game</button>
+                    </div>
+
+                    <div id="playerLogin" style="display: none;">
+                        <h3>Player Login</h3>
+                        <label>Your Name:</label>
+                        <input type="text" id="playerName" placeholder="Enter your name" />
+                        
+                        <label>Choose Your Home Planet:</label>
+                        <div class="planet-selection">
+                            <div class="planet-option" data-planet="Earth">
+                                <div class="planet-icon earth">🌍</div>
+                                <span>Earth</span>
+                            </div>
+                            <div class="planet-option" data-planet="Mars">
+                                <div class="planet-icon mars">🔴</div>
+                                <span>Mars</span>
+                            </div>
+                            <div class="planet-option" data-planet="Belt">
+                                <div class="planet-icon belt">☄️</div>
+                                <span>Belt</span>
+                            </div>
+                            <div class="planet-option" data-planet="Jupiter">
+                                <div class="planet-icon jupiter">🪐</div>
+                                <span>Jupiter</span>
+                            </div>
+                        </div>
+                        <button id="joinGame" class="btn-primary" disabled>Join Game</button>
+                        <button id="backToMenu" class="btn-secondary">Back</button>
+                    </div>
+
+                    <div id="roleSelection">
+                        <h3>Welcome to Interstelliad</h3>
+                        <button id="createGameBtn" class="btn-primary">Create New Game (Organizer)</button>
+                        <button id="joinGameBtn" class="btn-primary">Join Existing Game (Player)</button>
+                    </div>
+                </div>
+
+                <div class="game-info" id="gameInfo" style="display: none;">
+                    <h2>Current Turn</h2>
+                    <div class="current-player">
+                        <div class="player-indicator" id="currentPlayerIndicator"></div>
+                        <span id="currentPlayerName">Player 1</span>
+                    </div>
+                    <div class="player-stats">
+                        <p>Colonies: <span id="currentColonies">0</span> / 10</p>
+                    </div>
+
+                    <h3>Actions</h3>
+                    <div class="action-buttons">
+                        <button id="moveBtn" class="btn-action">Move Ship</button>
+                        <button id="checkLifeBtn" class="btn-action" disabled>Check for Life</button>
+                        <button id="colonizeBtn" class="btn-action" disabled>Colonize</button>
+                        <button id="endTurnBtn" class="btn-action">End Turn</button>
+                    </div>
+
+                    <div class="dice-section" id="diceSection">
+                        <h3>Dice Roll</h3>
+                        <div class="dice-display">
+                            <div class="die" id="die1">?</div>
+                            <div class="die" id="die2">?</div>
+                        </div>
+                        <p id="diceResult"></p>
+                    </div>
+
+                    <h3>Players</h3>
+                    <div id="playerList"></div>
+
+                    <div class="game-log">
+                        <h3>Game Log</h3>
+                        <div id="logMessages"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="board-container">
+                <canvas id="gameBoard" width="900" height="780"></canvas>
+            </main>
+        </div>
+
+        <div class="modal" id="battleModal">
+            <div class="modal-content">
+                <h2 id="battleTitle">Battle!</h2>
+                <div id="battleContent">
+                    <p id="battleDescription"></p>
+                    <div class="battle-dice">
+                        <div class="battle-side">
+                            <h3 id="attackerName">You</h3>
+                            <div class="dice-display">
+                                <div class="die" id="attackerDie1">?</div>
+                                <div class="die" id="attackerDie2">?</div>
+                            </div>
+                            <p>Total: <span id="attackerTotal">0</span></p>
+                        </div>
+                        <div class="battle-side">
+                            <h3 id="defenderName">Aliens</h3>
+                            <div class="dice-display">
+                                <div class="die" id="defenderDie1">?</div>
+                                <div class="die" id="defenderDie2">?</div>
+                            </div>
+                            <p>Total: <span id="defenderTotal">0</span></p>
+                        </div>
+                    </div>
+                    <button id="rollBattleBtn" class="btn-primary">Roll Dice</button>
+                    <p id="battleResult"></p>
+                </div>
+                <button id="closeBattleBtn" class="btn-secondary" style="display: none;">Close</button>
+            </div>
+        </div>
+
+        <div class="modal" id="endGameModal">
+            <div class="modal-content">
+                <h2>🏆 Game Over!</h2>
+                <div id="finalScores"></div>
+                <button id="newGameBtn" class="btn-primary">New Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
