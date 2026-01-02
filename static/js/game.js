@@ -1122,7 +1122,7 @@ function handleMove() {
         document.getElementById('citiesInput').max = availableCities;
         document.getElementById('citiesInput').value = 0;
         document.getElementById('loadCitiesSection').style.display = 'block';
-        document.getElementById('moveBtn').style.display = 'none';
+        document.getElementById('movementSection').style.display = 'none'; // Hide entire movement section
         gameState.turnPhase = 'loadCities';
         return;
     }
@@ -1192,7 +1192,7 @@ function confirmMove() {
     
     // Hide movement controls, show Start Move button
     document.getElementById('movementControls').style.display = 'none';
-    document.getElementById('moveBtn').style.display = 'block';
+    document.getElementById('moveBtn').style.display = 'inline-block';
     
     drawBoard();
     updateUI();
@@ -1444,8 +1444,9 @@ function endTurn() {
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
     if (moveBtn) {
-        moveBtn.style.display = 'block';
-        console.log('[END_TURN] Start Move button shown');
+        moveBtn.style.display = 'inline-block';
+        moveBtn.style.visibility = 'visible';
+        console.log('[END_TURN] Start Move button shown, display:', moveBtn.style.display);
     }
     if (movementControls) movementControls.style.display = 'none';
     
@@ -1754,8 +1755,9 @@ function loadCities() {
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
     if (moveBtn) {
-        moveBtn.style.display = 'block';
-        console.log('[LOAD_CITIES] Start Move button shown');
+        moveBtn.style.display = 'inline-block';
+        moveBtn.style.visibility = 'visible';
+        console.log('[LOAD_CITIES] Start Move button shown, display:', moveBtn.style.display);
     }
     if (movementControls) movementControls.style.display = 'none';
     
@@ -1777,9 +1779,14 @@ function startNormalGameplay() {
     // Show Start Move button and hide movement controls
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
+    
+    console.log('[START_NORMAL] moveBtn element:', moveBtn);
+    console.log('[START_NORMAL] movementSection:', document.getElementById('movementSection'));
+    
     if (moveBtn) {
-        moveBtn.style.display = 'block';
-        console.log('[START_NORMAL] Start Move button shown');
+        moveBtn.style.display = 'inline-block';
+        moveBtn.style.visibility = 'visible';
+        console.log('[START_NORMAL] Start Move button shown, display:', moveBtn.style.display);
     } else {
         console.error('[START_NORMAL] Start Move button not found!');
     }
