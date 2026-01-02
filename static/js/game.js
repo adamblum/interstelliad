@@ -286,6 +286,7 @@ function drawHexGrid() {
     let currentPos = null;
     if (gameState.turnPhase === 'moving' && gameState.movementPath.length > 0) {
         currentPos = gameState.movementPath[gameState.movementPath.length - 1];
+        console.log('[DRAW_HEX_GRID] In movement mode. Current pos:', currentPos, 'Remaining:', gameState.remainingMoves);
     }
     
     // Draw hex grid
@@ -1064,10 +1065,19 @@ function handleCanvasClick(event) {
 }
 
 function handleMovementClick(hex) {
-    if (myPlayerIndex !== gameState.currentPlayerIndex) return;
+    console.log('[MOVEMENT_CLICK] Clicked hex:', hex);
+    console.log('[MOVEMENT_CLICK] Turn phase:', gameState.turnPhase);
+    console.log('[MOVEMENT_CLICK] Movement path:', gameState.movementPath);
+    console.log('[MOVEMENT_CLICK] Remaining moves:', gameState.remainingMoves);
+    
+    if (myPlayerIndex !== gameState.currentPlayerIndex) {
+        console.log('[MOVEMENT_CLICK] Not my turn');
+        return;
+    }
     
     // Get current position (last hex in path)
     const currentPos = gameState.movementPath[gameState.movementPath.length - 1];
+    console.log('[MOVEMENT_CLICK] Current position:', currentPos);
     
     // Check if clicked hex is adjacent to current position
     const distance = Math.max(
@@ -1075,33 +1085,32 @@ function handleMovementClick(hex) {
         Math.abs(currentPos.r - hex.r),
         Math.abs((-currentPos.q - currentPos.r) - (-hex.q - hex.r))
     );
+    console.log('[MOVEMENT_CLICK] Distance:', distance);
     
     if (distance !== 1) {
-        log('You can only move to adjacent hexes!');
+        log('You can only move to adjacent hexes (highlighted in yellow)!');
         return;
     }
     
     // Check if we have moves remaining
     if (gameState.remainingMoves <= 0) {
-        log('No moves remaining! Confirm or redo your movement.');
+        log('No moves remaining! Click "End Move" to confirm or "Redo Move" to start over.');
         return;
     }
     
-    // Check if hex exists on board
-    const targetHex = BOARD_STRUCTURE.find(h => h.q === hex.q && h.r === hex.r);
-    if (!targetHex) {
-        log('Invalid hex!');
-        return;
-    }
-    
+    // Allow movement to any hex (empty space or occupied)
     // Add to movement path
     gameState.movementPath.push({ q: hex.q, r: hex.r });
     gameState.remainingMoves--;
+    
+    console.log('[MOVEMENT_CLICK] Added to path. New remaining:', gameState.remainingMoves);
     
     document.getElementById('movesRemaining').textContent = gameState.remainingMoves;
     
     if (gameState.remainingMoves === 0) {
         log('Maximum moves reached! Click "End Move" to confirm or "Redo Move" to start over.');
+    } else {
+        log(`Moved to (${hex.q}, ${hex.r}). ${gameState.remainingMoves} moves remaining.`);
     }
     
     drawBoard();
@@ -1152,14 +1161,29 @@ function handleMove() {
     gameState.movementPath = [{ q: currentPlayer.position.q, r: currentPlayer.position.r }];
     gameState.remainingMoves = velocity;
     
-    log(`Click on adjacent hexes to plan your movement (up to ${velocity} hexes). Click "End Move" when ready.`);
+    console.log('[HANDLE_MOVE] Set turnPhase to:', gameState.turnPhase);
+    console.log('[HANDLE_MOVE] Movement path:', gameState.movementPath);
+    console.log('[HANDLE_MOVE] Remaining moves:', gameState.remainingMoves);
+    
+    log(`Click on adjacent hexes (highlighted in yellow) to move. ${velocity} moves available.`);
     
     // Hide Start Move button, show movement controls
-    document.getElementById('moveBtn').style.display = 'none';
-    document.getElementById('movementControls').style.display = 'block';
-    document.getElementById('movesRemaining').textContent = velocity;
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    const movesRemaining = document.getElementById('movesRemaining');
+    
+    console.log('[HANDLE_MOVE] moveBtn:', moveBtn);
+    console.log('[HANDLE_MOVE] movementControls:', movementControls);
+    
+    if (moveBtn) moveBtn.style.display = 'none';
+    if (movementControls) {
+        movementControls.style.display = 'block';
+        console.log('[HANDLE_MOVE] Showed movementControls');
+    }
+    if (movesRemaining) movesRemaining.textContent = velocity;
     
     drawBoard();
+    console.log('[HANDLE_MOVE] Called drawBoard');
 }
 
 function confirmMove() {
