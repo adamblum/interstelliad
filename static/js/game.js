@@ -249,6 +249,61 @@ function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
     ctx.stroke();
 }
 
+// Draw hex grid for empty space hexes
+function drawHexGrid() {
+    // Calculate bounds from board structure
+    let minQ = Infinity, maxQ = -Infinity;
+    let minR = Infinity, maxR = -Infinity;
+    
+    BOARD_STRUCTURE.forEach(hex => {
+        if (hex.type === 'star') { // Only use stars for bounds
+            minQ = Math.min(minQ, hex.q);
+            maxQ = Math.max(maxQ, hex.q);
+            minR = Math.min(minR, hex.r);
+            maxR = Math.max(maxR, hex.r);
+        }
+    });
+    
+    // Expand bounds slightly
+    minQ -= 2;
+    maxQ += 2;
+    minR -= 2;
+    maxR += 2;
+    
+    // Draw hex grid
+    for (let q = minQ; q <= maxQ; q++) {
+        for (let r = minR; r <= maxR; r++) {
+            // Check if this hex is already occupied by a star or planet
+            const occupied = BOARD_STRUCTURE.find(h => h.q === q && h.r === r);
+            if (!occupied) {
+                const pos = hexToPixel(q, r);
+                
+                // Only draw if within canvas bounds
+                if (pos.x > -HEX_RADIUS && pos.x < canvas.width + HEX_RADIUS &&
+                    pos.y > -HEX_RADIUS && pos.y < canvas.height + HEX_RADIUS) {
+                    
+                    // Draw empty hex with light gray outline
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i - Math.PI / 6;
+                        const hx = pos.x + HEX_RADIUS * Math.cos(angle);
+                        const hy = pos.y + HEX_RADIUS * Math.sin(angle);
+                        if (i === 0) {
+                            ctx.moveTo(hx, hy);
+                        } else {
+                            ctx.lineTo(hx, hy);
+                        }
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = '#333333'; // Light gray outline
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+}
+
 // Draw the board
 function drawBoard() {
     // Clear canvas with space background
@@ -257,6 +312,9 @@ function drawBoard() {
     
     // Draw stars in background
     drawBackgroundStars();
+    
+    // Draw hex grid for empty space
+    drawHexGrid();
     
     // Draw all hexes (stars and planets)
     BOARD_STRUCTURE.forEach(hex => {
@@ -982,7 +1040,7 @@ function handleMovementClick(hex) {
     document.getElementById('movesRemaining').textContent = gameState.remainingMoves;
     
     if (gameState.remainingMoves === 0) {
-        log('Maximum moves reached! Confirm or redo your movement.');
+        log('Maximum moves reached! Click "Done Move" to confirm or "Redo Move" to start over.');
     }
     
     drawBoard();
@@ -1020,11 +1078,12 @@ function handleMove() {
     gameState.movementPath = [{ q: currentPlayer.position.q, r: currentPlayer.position.r }];
     gameState.remainingMoves = velocity;
     
-    log(`Click on adjacent hexes to plan your movement. You can move ${velocity} hexes.`);
+    log(`Click on adjacent hexes to plan your movement (up to ${velocity} hexes). Click "Done Move" when ready.`);
     
     // Show movement controls
     document.querySelector('.action-buttons').style.display = 'none';
     document.getElementById('movementControls').style.display = 'block';
+    document.getElementById('movesRemaining').textContent = velocity;
     document.getElementById('movesRemaining').textContent = velocity;
     
     drawBoard();
