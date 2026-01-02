@@ -1097,6 +1097,7 @@ function handleMovementClick(hex) {
 }
 
 function handleMove() {
+    console.log('[HANDLE_MOVE] Function called');
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
     if (myPlayerIndex !== gameState.currentPlayerIndex) {
@@ -1108,16 +1109,20 @@ function handleMove() {
     const homePlanet = HOME_PLANETS[currentPlayer.planet];
     const isAtHome = currentPlayer.position.q === homePlanet.q && currentPlayer.position.r === homePlanet.r;
     
+    console.log('[HANDLE_MOVE] At home?', isAtHome, 'Has loaded cities?', currentPlayer.hasLoadedCities);
+    
     if (isAtHome) {
         // Player is at home planet - show city loading UI to choose/reload cities
         // Calculate available cities (max 10 minus what's already on ship)
         const citiesOnShip = currentPlayer.citiesOnShip || 0;
         const availableCities = Math.max(0, 10 - citiesOnShip);
         
+        console.log('[HANDLE_MOVE] Showing city loading. Available:', availableCities);
         log(`At your home planet! You have ${availableCities} cities available to load.`);
         document.getElementById('citiesInput').max = availableCities;
         document.getElementById('citiesInput').value = 0;
         document.getElementById('loadCitiesSection').style.display = 'block';
+        document.getElementById('moveBtn').style.display = 'none';
         gameState.turnPhase = 'loadCities';
         return;
     }
@@ -1128,6 +1133,8 @@ function handleMove() {
         log('Your ship is too heavy to move! (Velocity must be > 0)');
         return;
     }
+    
+    console.log('[HANDLE_MOVE] Starting movement mode. Velocity:', velocity);
     
     // Start movement mode
     gameState.turnPhase = 'moving';
@@ -1432,10 +1439,14 @@ function endTurn() {
     document.getElementById('die1').textContent = '?';
     document.getElementById('die2').textContent = '?';
     
-    // Show Start Move button and hide movement controls at turn start
+    // Show movement section and Start Move button
+    document.getElementById('movementSection').style.display = 'block';
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
-    if (moveBtn) moveBtn.style.display = 'block';
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        console.log('[END_TURN] Start Move button shown');
+    }
     if (movementControls) movementControls.style.display = 'none';
     
     log(`${gameState.players[gameState.currentPlayerIndex].name}'s turn`);
@@ -1738,10 +1749,14 @@ function loadCities() {
     document.getElementById('citiesOnShip').textContent = currentPlayer.citiesOnShip;
     document.getElementById('currentVelocity').textContent = currentPlayer.velocity;
     
-    // Show Start Move button and hide movement controls
+    // Show movement section with Start Move button and hide movement controls
+    document.getElementById('movementSection').style.display = 'block';
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
-    if (moveBtn) moveBtn.style.display = 'block';
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        console.log('[LOAD_CITIES] Start Move button shown');
+    }
     if (movementControls) movementControls.style.display = 'none';
     
     // Return to normal movement phase
@@ -1757,14 +1772,29 @@ function startNormalGameplay() {
     gameState.turnPhase = 'planning';
     document.querySelector('.action-buttons').style.display = 'block';
     document.getElementById('turnOrderSection').style.display = 'none';
+    document.getElementById('movementSection').style.display = 'block';
     
     // Show Start Move button and hide movement controls
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
-    if (moveBtn) moveBtn.style.display = 'block';
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        console.log('[START_NORMAL] Start Move button shown');
+    } else {
+        console.error('[START_NORMAL] Start Move button not found!');
+    }
     if (movementControls) movementControls.style.display = 'none';
     
-    log('Game is now in progress. Click "Start Move" to move your ship!');
+    // Check if current player is at home and needs to load cities for first time
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const homePlanet = HOME_PLANETS[currentPlayer.planet];
+    const isAtHome = currentPlayer.position.q === homePlanet.q && currentPlayer.position.r === homePlanet.r;
+    
+    if (isAtHome && !currentPlayer.hasLoadedCities) {
+        log('First turn! You must load cities before moving. Click "Start Move" to load cities.');
+    } else {
+        log('Game is now in progress. Click "Start Move" to move your ship!');
+    }
     
     updateUI();
     drawBoard();
