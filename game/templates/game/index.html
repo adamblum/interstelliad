@@ -96,10 +96,16 @@
 
                     <h3>Actions</h3>
                     <div class="action-buttons">
-                        <button id="moveBtn" class="btn-action">Move Ship</button>
+                        <button id="moveBtn" class="btn-action">Start Move</button>
                         <button id="checkLifeBtn" class="btn-action" disabled>Check for Life</button>
                         <button id="colonizeBtn" class="btn-action" disabled>Colonize</button>
                         <button id="endTurnBtn" class="btn-action">End Turn</button>
+                    </div>
+
+                    <div id="movementControls" style="display: none; margin: 10px 0;">
+                        <p style="color: #00d4ff;">Moves remaining: <span id="movesRemaining">0</span></p>
+                        <button id="confirmMoveBtn" class="btn-primary">Confirm Move</button>
+                        <button id="redoMoveBtn" class="btn-secondary">Redo Move</button>
                     </div>
 
                     <div id="turnOrderSection" style="display: none;">

@@ -10,7 +10,7 @@ const gameState = {
     board: null,
     gameStarted: false,
     selectedHex: null,
-    turnPhase: 'loadCities', // 'rollForTurn', 'loadCities', 'selectDestination', 'move', 'action'
+    turnPhase: 'loadCities', // 'rollForTurn', 'loadCities', 'planning', 'moving', 'action'
     movesThisTurn: 0,
     maxMovesPerTurn: 3,
     hasColonizedThisTurn: false,
@@ -22,7 +22,9 @@ const gameState = {
     turnOrderRolls: {}, // Store player rolls for turn order
     destinationHex: null, // Current destination for movement
     citiesOnShip: 0, // Cities currently on ship
-    hasLoadedCities: false // Whether player has loaded cities this game
+    hasLoadedCities: false, // Whether player has loaded cities this game
+    movementPath: [], // Array of hexes in current movement path
+    remainingMoves: 0 // Moves remaining this turn
 };
 
 // Player colors
@@ -343,6 +345,45 @@ function drawBoard() {
             ctx.fillText('🚀', shipX, shipY);
         }
     });
+    
+    // Draw movement path if in movement mode
+    if (gameState.turnPhase === 'moving' && gameState.movementPath.length > 1) {
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        
+        for (let i = 0; i < gameState.movementPath.length; i++) {
+            const pathHex = gameState.movementPath[i];
+            const pos = hexToPixel(pathHex.q, pathHex.r);
+            
+            if (i === 0) {
+                ctx.moveTo(pos.x, pos.y);
+            } else {
+                ctx.lineTo(pos.x, pos.y);
+            }
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw circles at each point in path
+        gameState.movementPath.forEach((pathHex, index) => {
+            const pos = hexToPixel(pathHex.q, pathHex.r);
+            ctx.fillStyle = index === 0 ? '#ffff00' : '#00ff00';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw step number
+            if (index > 0) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(index.toString(), pos.x, pos.y - 10);
+            }
+        });
+    }
 }
 
 function drawBackgroundStars() {
@@ -482,6 +523,10 @@ function initGame() {
     document.getElementById('rollBattleBtn').addEventListener('click', rollBattle);
     document.getElementById('closeBattleBtn').addEventListener('click', closeBattle);
     document.getElementById('newGameBtn').addEventListener('click', resetGame);
+    
+    // Movement controls
+    document.getElementById('confirmMoveBtn').addEventListener('click', confirmMove);
+    document.getElementById('redoMoveBtn').addEventListener('click', redoMove);
     
     // New game flow controls
     document.getElementById('rollForTurnBtn').addEventListener('click', rollForTurnOrder);
@@ -884,6 +929,12 @@ function handleCanvasClick(event) {
     
     const hex = pixelToHex(x, y);
     
+    // If in movement mode, handle step-by-step movement
+    if (gameState.turnPhase === 'moving') {
+        handleMovementClick(hex);
+        return;
+    }
+    
     // Check if this is a valid hex
     const system = BOARD_STRUCTURE.find(s => s.q === hex.q && s.r === hex.r);
     if (system) {
@@ -893,12 +944,51 @@ function handleCanvasClick(event) {
     }
 }
 
-function handleMove() {
-    if (!gameState.selectedHex) {
-        log('Click on a star system or planet to set as your destination!');
+function handleMovementClick(hex) {
+    if (myPlayerIndex !== gameState.currentPlayerIndex) return;
+    
+    // Get current position (last hex in path)
+    const currentPos = gameState.movementPath[gameState.movementPath.length - 1];
+    
+    // Check if clicked hex is adjacent to current position
+    const distance = Math.max(
+        Math.abs(currentPos.q - hex.q),
+        Math.abs(currentPos.r - hex.r),
+        Math.abs((-currentPos.q - currentPos.r) - (-hex.q - hex.r))
+    );
+    
+    if (distance !== 1) {
+        log('You can only move to adjacent hexes!');
         return;
     }
     
+    // Check if we have moves remaining
+    if (gameState.remainingMoves <= 0) {
+        log('No moves remaining! Confirm or redo your movement.');
+        return;
+    }
+    
+    // Check if hex exists on board
+    const targetHex = BOARD_STRUCTURE.find(h => h.q === hex.q && h.r === hex.r);
+    if (!targetHex) {
+        log('Invalid hex!');
+        return;
+    }
+    
+    // Add to movement path
+    gameState.movementPath.push({ q: hex.q, r: hex.r });
+    gameState.remainingMoves--;
+    
+    document.getElementById('movesRemaining').textContent = gameState.remainingMoves;
+    
+    if (gameState.remainingMoves === 0) {
+        log('Maximum moves reached! Confirm or redo your movement.');
+    }
+    
+    drawBoard();
+}
+
+function handleMove() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
     if (myPlayerIndex !== gameState.currentPlayerIndex) {
@@ -925,60 +1015,82 @@ function handleMove() {
         return;
     }
     
-    const targetHex = BOARD_STRUCTURE.find(s => 
-        s.q === gameState.selectedHex.q && s.r === gameState.selectedHex.r
-    );
+    // Start movement mode
+    gameState.turnPhase = 'moving';
+    gameState.movementPath = [{ q: currentPlayer.position.q, r: currentPlayer.position.r }];
+    gameState.remainingMoves = velocity;
     
-    if (!targetHex) return;
+    log(`Click on adjacent hexes to plan your movement. You can move ${velocity} hexes.`);
     
-    // Calculate distance to target
-    const distance = Math.max(
-        Math.abs(currentPlayer.position.q - targetHex.q),
-        Math.abs(currentPlayer.position.r - targetHex.r),
-        Math.abs((-currentPlayer.position.q - currentPlayer.position.r) - (-targetHex.q - targetHex.r))
-    );
+    // Show movement controls
+    document.querySelector('.action-buttons').style.display = 'none';
+    document.getElementById('movementControls').style.display = 'block';
+    document.getElementById('movesRemaining').textContent = velocity;
     
-    // Check if target is within velocity range
-    // Note: For planets, use parent star position for distance calculation
-    let targetQ = targetHex.q;
-    let targetR = targetHex.r;
-    
-    if (targetHex.type === 'planet') {
-        targetQ = targetHex.parentQ;
-        targetR = targetHex.parentR;
-        
-        const starDistance = Math.max(
-            Math.abs(currentPlayer.position.q - targetQ),
-            Math.abs(currentPlayer.position.r - targetR),
-            Math.abs((-currentPlayer.position.q - currentPlayer.position.r) - (-targetQ - targetR))
-        );
-        
-        if (starDistance > velocity) {
-            log(`Target is ${starDistance} light years away, but your velocity is only ${velocity}!`);
-            return;
-        }
-        
-        // Player can reach the planet (it's at the star's location)
-        currentPlayer.position = { q: targetHex.q, r: targetHex.r };
-        log(`${currentPlayer.name} traveled ${starDistance} light years to ${targetHex.name}`);
-    } else {
-        // Moving to a star
-        if (distance > velocity) {
-            log(`Target is ${distance} light years away, but your velocity is only ${velocity}!`);
-            return;
-        }
-        
-        currentPlayer.position = { q: targetHex.q, r: targetHex.r };
-        log(`${currentPlayer.name} traveled ${distance} light years to ${targetHex.name}`);
+    drawBoard();
+}
+
+function confirmMove() {
+    if (myPlayerIndex !== gameState.currentPlayerIndex) return;
+    if (gameState.movementPath.length <= 1) {
+        log('No movement to confirm!');
+        return;
     }
     
-    // Enable action buttons if on a planet
-    if (targetHex.type === 'planet') {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const finalPosition = gameState.movementPath[gameState.movementPath.length - 1];
+    
+    // Update player position
+    currentPlayer.position = { q: finalPosition.q, r: finalPosition.r };
+    
+    const hexesMoved = gameState.movementPath.length - 1;
+    log(`${currentPlayer.name} moved ${hexesMoved} ${hexesMoved === 1 ? 'hex' : 'hexes'}.`);
+    
+    // Broadcast move to other players
+    sendWebSocketMessage({
+        type: 'player_moved',
+        player_index: myPlayerIndex,
+        position: currentPlayer.position,
+        path: gameState.movementPath
+    });
+    
+    // Check if player is on a planet
+    const currentHex = BOARD_STRUCTURE.find(h => 
+        h.q === currentPlayer.position.q && h.r === currentPlayer.position.r
+    );
+    
+    if (currentHex && currentHex.type === 'planet') {
         document.getElementById('checkLifeBtn').disabled = false;
+        document.getElementById('colonizeBtn').disabled = false;
     }
+    
+    // Clean up movement state
+    gameState.movementPath = [];
+    gameState.remainingMoves = 0;
+    gameState.turnPhase = 'action';
+    
+    // Hide movement controls, show action buttons
+    document.getElementById('movementControls').style.display = 'none';
+    document.querySelector('.action-buttons').style.display = 'block';
     
     drawBoard();
     updateUI();
+}
+
+function redoMove() {
+    if (myPlayerIndex !== gameState.currentPlayerIndex) return;
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const velocity = currentPlayer.velocity || (9 - (currentPlayer.citiesOnShip || 0));
+    
+    // Reset movement state
+    gameState.movementPath = [{ q: currentPlayer.position.q, r: currentPlayer.position.r }];
+    gameState.remainingMoves = velocity;
+    
+    document.getElementById('movesRemaining').textContent = velocity;
+    log('Movement reset. Click adjacent hexes to plan your route.');
+    
+    drawBoard();
 }
 
 function checkForLife() {
