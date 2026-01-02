@@ -111,14 +111,29 @@ STAR_SYSTEMS_DATA.forEach(system => {
     });
     
     // Add planets as adjacent hexes (distributed around the star)
-    const directions = [
-        {q: 1, r: 0},   // East
-        {q: 0, r: 1},   // Southeast
-        {q: -1, r: 1},  // Southwest
-        {q: -1, r: 0},  // West
-        {q: 0, r: -1},  // Northwest
-        {q: 1, r: -1}   // Northeast
-    ];
+    // Special handling for P Centauri to avoid collision with A Centauri
+    let directions;
+    if (system.star === "P Centauri") {
+        // Use Northwest and Northeast directions to avoid A Centauri
+        directions = [
+            {q: 0, r: -1},  // Northwest
+            {q: 1, r: -1},  // Northeast
+            {q: 1, r: 0},   // East
+            {q: 0, r: 1},   // Southeast
+            {q: -1, r: 1},  // Southwest
+            {q: -1, r: 0}   // West
+        ];
+    } else {
+        // Default directions
+        directions = [
+            {q: 1, r: 0},   // East
+            {q: 0, r: 1},   // Southeast
+            {q: -1, r: 1},  // Southwest
+            {q: -1, r: 0},  // West
+            {q: 0, r: -1},  // Northwest
+            {q: 1, r: -1}   // Northeast
+        ];
+    }
     
     system.planets.forEach((planet, index) => {
         const dir = directions[index % 6];
