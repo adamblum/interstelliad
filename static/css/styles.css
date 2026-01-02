@@ -323,15 +323,15 @@ header h1 {
     padding: 20px;
     border-radius: 10px;
     backdrop-filter: blur(10px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow: auto;
+    max-height: 800px;
 }
 
 #gameBoard {
     border-radius: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     cursor: pointer;
+    display: block;
 }
 
 .modal {

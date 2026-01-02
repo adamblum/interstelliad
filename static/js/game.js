@@ -36,9 +36,13 @@ const HOME_PLANETS = {
 let canvas, ctx;
 
 // Hex grid configuration
-const HEX_RADIUS = 20; // Smaller to fit the large board
+const HEX_RADIUS = 30; // Increased for better visibility
 const HEX_WIDTH = Math.sqrt(3) * HEX_RADIUS;
 const HEX_HEIGHT = 2 * HEX_RADIUS;
+
+// Sol coordinates in offset system
+const SOL_COL = 13;
+const SOL_ROW = 8;
 
 // Board structure from the PDF - using offset coordinates (col, row)
 // Converting to axial coordinates for hex math: q = col - (row - (row&1)) / 2, r = row
@@ -137,23 +141,47 @@ function initCanvas() {
     canvas = document.getElementById('gameBoard');
     ctx = canvas.getContext('2d');
     
+    // Calculate canvas size based on board dimensions
+    // Board ranges: col 1-23, row 2-20
+    const minCol = 1, maxCol = 23;
+    const minRow = 2, maxRow = 20;
+    
+    // Convert board corners to axial coordinates
+    const minAxial = offsetToAxial(minCol, minRow);
+    const maxAxial = offsetToAxial(maxCol, maxRow);
+    
+    // Calculate required canvas dimensions with padding
+    const colRange = maxCol - minCol + 6; // Extra space for planets around stars
+    const rowRange = maxRow - minRow + 6;
+    
+    const canvasWidth = colRange * HEX_WIDTH + HEX_RADIUS * 4;
+    const canvasHeight = rowRange * HEX_HEIGHT * 0.75 + HEX_RADIUS * 4;
+    
+    // Set canvas size
+    canvas.width = Math.ceil(canvasWidth);
+    canvas.height = Math.ceil(canvasHeight);
+    
+    console.log(`[CANVAS] Canvas size: ${canvas.width}x${canvas.height}`);
+    
     canvas.addEventListener('click', handleCanvasClick);
 }
 
-// Hex coordinate to pixel conversion
+// Hex coordinate to pixel conversion (centered on Sol)
 function hexToPixel(q, r) {
-    const x = HEX_RADIUS * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + canvas.width / 2;
-    const y = HEX_RADIUS * (3/2 * r) + canvas.height / 2;
+    const solAxial = offsetToAxial(SOL_COL, SOL_ROW);
+    const x = HEX_RADIUS * (Math.sqrt(3) * (q - solAxial.q) + Math.sqrt(3)/2 * (r - solAxial.r)) + canvas.width / 2;
+    const y = HEX_RADIUS * (3/2 * (r - solAxial.r)) + canvas.height / 2;
     return { x, y };
 }
 
-// Pixel to hex coordinate conversion
+// Pixel to hex coordinate conversion (centered on Sol)
 function pixelToHex(x, y) {
+    const solAxial = offsetToAxial(SOL_COL, SOL_ROW);
     const relX = x - canvas.width / 2;
     const relY = y - canvas.height / 2;
     
-    const q = (Math.sqrt(3)/3 * relX - 1/3 * relY) / HEX_RADIUS;
-    const r = (2/3 * relY) / HEX_RADIUS;
+    const q = (Math.sqrt(3)/3 * relX - 1/3 * relY) / HEX_RADIUS + solAxial.q;
+    const r = (2/3 * relY) / HEX_RADIUS + solAxial.r;
     
     return axialRound(q, r);
 }
