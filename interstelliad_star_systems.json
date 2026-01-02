@@ -70,22 +70,22 @@
     "life_probability": 3
   },
   {
-    "star": "A/P Centauri",
+    "star": "P Centauri",
     "col": 13,
-    "row": 14,
+    "row": 13,
     "planet": "b",
     "life_probability": 4
   },
   {
-    "star": "A/P Centauri",
+    "star": "P Centauri",
     "col": 13,
-    "row": 14,
+    "row": 13,
     "planet": "c",
     "life_probability": 2
   },
   {
-    "star": "A/P Centauri",
-    "col": 13,
+    "star": "A Centauri",
+    "col": 14,
     "row": 14,
     "planet": "x",
     "life_probability": 3
