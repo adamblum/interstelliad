@@ -397,6 +397,21 @@ function drawBoard() {
         if (playerHere) {
             const shipX = pos.x;
             const shipY = pos.y + (hex.type === 'star' ? 15 : 25);
+            
+            // Highlight the current player's ship
+            if (playerHere.id === myPlayerIndex && gameState.gameStarted) {
+                // Draw pulsing glow around current player's ship
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(shipX, shipY - 3, 15, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            }
+            
             ctx.fillStyle = PLAYER_COLORS[playerHere.id];
             ctx.font = '18px Arial';
             ctx.textAlign = 'center';
@@ -1040,7 +1055,7 @@ function handleMovementClick(hex) {
     document.getElementById('movesRemaining').textContent = gameState.remainingMoves;
     
     if (gameState.remainingMoves === 0) {
-        log('Maximum moves reached! Click "Done Move" to confirm or "Redo Move" to start over.');
+        log('Maximum moves reached! Click "End Move" to confirm or "Redo Move" to start over.');
     }
     
     drawBoard();
@@ -1078,7 +1093,7 @@ function handleMove() {
     gameState.movementPath = [{ q: currentPlayer.position.q, r: currentPlayer.position.r }];
     gameState.remainingMoves = velocity;
     
-    log(`Click on adjacent hexes to plan your movement (up to ${velocity} hexes). Click "Done Move" when ready.`);
+    log(`Click on adjacent hexes to plan your movement (up to ${velocity} hexes). Click "End Move" when ready.`);
     
     // Show movement controls
     document.querySelector('.action-buttons').style.display = 'none';
@@ -1369,12 +1384,17 @@ function endTurn() {
     gameState.hasColonizedThisTurn = false;
     gameState.currentPlanetHasLife = false;
     gameState.selectedHex = null;
+    gameState.turnPhase = 'planning'; // Reset to planning phase
     
     document.getElementById('checkLifeBtn').disabled = true;
     document.getElementById('colonizeBtn').disabled = true;
     document.getElementById('diceResult').textContent = '';
     document.getElementById('die1').textContent = '?';
     document.getElementById('die2').textContent = '?';
+    
+    // Ensure action buttons are visible and movement controls are hidden
+    document.querySelector('.action-buttons').style.display = 'block';
+    document.getElementById('movementControls').style.display = 'none';
     
     log(`${gameState.players[gameState.currentPlayerIndex].name}'s turn`);
     
@@ -1670,20 +1690,25 @@ function loadCities() {
     document.getElementById('citiesOnShip').textContent = cities;
     document.getElementById('currentVelocity').textContent = currentPlayer.velocity;
     
-    // Return to normal movement phase
-    gameState.turnPhase = 'move';
+    // Show action buttons for movement
+    document.querySelector('.action-buttons').style.display = 'block';
+    document.getElementById('movementControls').style.display = 'none';
     
-    log('Cities loaded! You can now move your ship.');
+    // Return to normal movement phase
+    gameState.turnPhase = 'planning';
+    
+    log('Cities loaded! Click "Start Move" to begin moving your ship.');
     
     updateUI();
     drawBoard();
 }
 
 function startNormalGameplay() {
-    gameState.turnPhase = 'selectDestination';
+    gameState.turnPhase = 'planning';
     document.querySelector('.action-buttons').style.display = 'block';
+    document.getElementById('movementControls').style.display = 'none';
     
-    log('Game is now in progress. Select a destination and move your ship!');
+    log('Game is now in progress. Click "Start Move" to move your ship!');
     
     updateUI();
     drawBoard();
