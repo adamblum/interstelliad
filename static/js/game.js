@@ -1192,7 +1192,12 @@ function confirmMove() {
     
     // Hide movement controls, show Start Move button
     document.getElementById('movementControls').style.display = 'none';
-    document.getElementById('moveBtn').style.display = 'inline-block';
+    const moveBtn = document.getElementById('moveBtn');
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        moveBtn.style.visibility = 'visible';
+        moveBtn.style.opacity = '1';
+    }
     
     drawBoard();
     updateUI();
@@ -1440,12 +1445,20 @@ function endTurn() {
     document.getElementById('die2').textContent = '?';
     
     // Show movement section and Start Move button
-    document.getElementById('movementSection').style.display = 'block';
+    const movementSection = document.getElementById('movementSection');
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
+    
+    if (movementSection) {
+        movementSection.style.display = 'block';
+        movementSection.style.visibility = 'visible';
+    }
+    
     if (moveBtn) {
-        moveBtn.style.display = 'inline-block';
+        moveBtn.style.display = 'block';
         moveBtn.style.visibility = 'visible';
+        moveBtn.style.opacity = '1';
+        moveBtn.disabled = false;
         console.log('[END_TURN] Start Move button shown, display:', moveBtn.style.display);
     }
     if (movementControls) movementControls.style.display = 'none';
@@ -1751,12 +1764,20 @@ function loadCities() {
     document.getElementById('currentVelocity').textContent = currentPlayer.velocity;
     
     // Show movement section with Start Move button and hide movement controls
-    document.getElementById('movementSection').style.display = 'block';
+    const movementSection = document.getElementById('movementSection');
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
+    
+    if (movementSection) {
+        movementSection.style.display = 'block';
+        movementSection.style.visibility = 'visible';
+    }
+    
     if (moveBtn) {
-        moveBtn.style.display = 'inline-block';
+        moveBtn.style.display = 'block';
         moveBtn.style.visibility = 'visible';
+        moveBtn.style.opacity = '1';
+        moveBtn.disabled = false;
         console.log('[LOAD_CITIES] Start Move button shown, display:', moveBtn.style.display);
     }
     if (movementControls) movementControls.style.display = 'none';
@@ -1771,26 +1792,22 @@ function loadCities() {
 }
 
 function startNormalGameplay() {
+    console.log('[START_NORMAL] Starting normal gameplay...');
     gameState.turnPhase = 'planning';
     document.querySelector('.action-buttons').style.display = 'block';
     document.getElementById('turnOrderSection').style.display = 'none';
-    document.getElementById('movementSection').style.display = 'block';
     
-    // Show Start Move button and hide movement controls
+    // Show Start Move button, hide movement controls
     const moveBtn = document.getElementById('moveBtn');
     const movementControls = document.getElementById('movementControls');
     
-    console.log('[START_NORMAL] moveBtn element:', moveBtn);
-    console.log('[START_NORMAL] movementSection:', document.getElementById('movementSection'));
-    
     if (moveBtn) {
-        moveBtn.style.display = 'inline-block';
-        moveBtn.style.visibility = 'visible';
-        console.log('[START_NORMAL] Start Move button shown, display:', moveBtn.style.display);
-    } else {
-        console.error('[START_NORMAL] Start Move button not found!');
+        moveBtn.style.display = 'block';
+        console.log('[START_NORMAL] moveBtn shown');
     }
-    if (movementControls) movementControls.style.display = 'none';
+    if (movementControls) {
+        movementControls.style.display = 'none';
+    }
     
     // Check if current player is at home and needs to load cities for first time
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -1807,5 +1824,39 @@ function startNormalGameplay() {
     drawBoard();
 }
 
+// Debug function to force show the button (can be called from console)
+window.forceShowMoveButton = function() {
+    const movementSection = document.getElementById('movementSection');
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    
+    console.log('[FORCE_SHOW] Movement section:', movementSection);
+    console.log('[FORCE_SHOW] Move button:', moveBtn);
+    
+    if (movementSection) {
+        movementSection.style.display = 'block';
+        movementSection.style.visibility = 'visible';
+        console.log('[FORCE_SHOW] Movement section shown');
+    }
+    
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        moveBtn.style.visibility = 'visible';
+        moveBtn.style.opacity = '1';
+        moveBtn.disabled = false;
+        moveBtn.hidden = false;
+        
+        const computed = window.getComputedStyle(moveBtn);
+        console.log('[FORCE_SHOW] Button display:', computed.display);
+        console.log('[FORCE_SHOW] Button visibility:', computed.visibility);
+        console.log('[FORCE_SHOW] Button is visible?', moveBtn.offsetParent !== null);
+    }
+    
+    if (movementControls) {
+        movementControls.style.display = 'none';
+    }
+};
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', initGame);
+
