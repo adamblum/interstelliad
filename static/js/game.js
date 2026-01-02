@@ -20,6 +20,7 @@ const gameState = {
     currentPlayerName: null,
     currentPlayerPlanet: null,
     turnOrderRolls: {}, // Store player rolls for turn order
+    rollOrder: [], // Track the order in which players rolled (for tiebreaker)
     destinationHex: null, // Current destination for movement
     citiesOnShip: 0, // Cities currently on ship
     hasLoadedCities: false, // Whether player has loaded cities this game
@@ -240,7 +241,7 @@ function axialRound(q, r) {
 }
 
 // Draw a hexagon
-function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
+function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff', lineWidth = 2) {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
         const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -256,7 +257,7 @@ function drawHex(x, y, radius, fillColor, strokeColor = '#ffffff') {
     ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.stroke();
 }
 
@@ -281,6 +282,12 @@ function drawHexGrid() {
     minR -= 2;
     maxR += 2;
     
+    // Get current position if in movement mode
+    let currentPos = null;
+    if (gameState.turnPhase === 'moving' && gameState.movementPath.length > 0) {
+        currentPos = gameState.movementPath[gameState.movementPath.length - 1];
+    }
+    
     // Draw hex grid
     for (let q = minQ; q <= maxQ; q++) {
         for (let r = minR; r <= maxR; r++) {
@@ -293,7 +300,29 @@ function drawHexGrid() {
                 if (pos.x > -HEX_RADIUS && pos.x < canvas.width + HEX_RADIUS &&
                     pos.y > -HEX_RADIUS && pos.y < canvas.height + HEX_RADIUS) {
                     
-                    // Draw empty hex with light gray outline
+                    // Check if this empty hex is adjacent during movement
+                    let strokeColor = '#333333';
+                    let lineWidth = 0.5;
+                    
+                    if (currentPos && gameState.remainingMoves > 0) {
+                        const distance = Math.max(
+                            Math.abs(q - currentPos.q),
+                            Math.abs(r - currentPos.r),
+                            Math.abs((-q - r) - (-currentPos.q - currentPos.r))
+                        );
+                        if (distance === 1) {
+                            strokeColor = '#ffff00'; // Yellow for adjacent
+                            lineWidth = 2;
+                        }
+                    }
+                    
+                    // Check if this is the current position (for empty space)
+                    if (currentPos && q === currentPos.q && r === currentPos.r) {
+                        strokeColor = '#00ff00'; // Green for current position
+                        lineWidth = 3;
+                    }
+                    
+                    // Draw empty hex
                     ctx.beginPath();
                     for (let i = 0; i < 6; i++) {
                         const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -306,8 +335,8 @@ function drawHexGrid() {
                         }
                     }
                     ctx.closePath();
-                    ctx.strokeStyle = '#333333'; // Light gray outline
-                    ctx.lineWidth = 0.5;
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth;
                     ctx.stroke();
                 }
             }
@@ -360,11 +389,12 @@ function drawBoard() {
         if (hex.type === 'star') {
             // Draw star system hex
             let strokeColor = '#888888';
-            if (isCurrentPosition) strokeColor = '#00ff00';
-            else if (isAdjacentHex) strokeColor = '#ffff00';
-            else if (isSelected) strokeColor = '#00ff00';
+            let lineWidth = 2;
+            if (isCurrentPosition) { strokeColor = '#00ff00'; lineWidth = 4; }
+            else if (isAdjacentHex) { strokeColor = '#ffff00'; lineWidth = 3; }
+            else if (isSelected) { strokeColor = '#00ff00'; lineWidth = 3; }
             
-            drawHex(pos.x, pos.y, HEX_RADIUS, hex.color + '44', strokeColor);
+            drawHex(pos.x, pos.y, HEX_RADIUS, hex.color + '44', strokeColor, lineWidth);
             
             // Draw star glow
             drawStarGlow(pos.x, pos.y, 10, hex.color);
@@ -383,16 +413,17 @@ function drawBoard() {
         } else if (hex.type === 'planet') {
             // Draw planet hex
             let strokeColor = '#666666';
-            if (isCurrentPosition) strokeColor = '#00ff00';
-            else if (isAdjacentHex) strokeColor = '#ffff00';
-            else if (isSelected) strokeColor = '#00ff00';
-            else if (playerHere) strokeColor = '#ffff00';
+            let lineWidth = 2;
+            if (isCurrentPosition) { strokeColor = '#00ff00'; lineWidth = 4; }
+            else if (isAdjacentHex) { strokeColor = '#ffff00'; lineWidth = 3; }
+            else if (isSelected) { strokeColor = '#00ff00'; lineWidth = 3; }
+            else if (playerHere) { strokeColor = '#ffff00'; lineWidth = 2; }
             
             // Check if planet is colonized
             const isColonized = hex.colonizedBy !== undefined;
             const bgColor = isColonized ? PLAYER_COLORS[hex.colonizedBy] + '66' : hex.color + '22';
             
-            drawHex(pos.x, pos.y, HEX_RADIUS, bgColor, strokeColor);
+            drawHex(pos.x, pos.y, HEX_RADIUS, bgColor, strokeColor, lineWidth);
             
             // Draw life probability number
             if (hex.lifeProbability !== null) {
@@ -524,26 +555,6 @@ function drawStarGlow(x, y, size, color) {
 }
 
 // Draw a hexagon
-function drawHex(x, y, radius, fillColor, strokeColor = '#888888') {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 6;
-        const hx = x + radius * Math.cos(angle);
-        const hy = y + radius * Math.sin(angle);
-        if (i === 0) {
-            ctx.moveTo(hx, hy);
-        } else {
-            ctx.lineTo(hx, hy);
-        }
-    }
-    ctx.closePath();
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 1.5; // Make lines more visible
-    ctx.stroke();
-}
-
 // Initialize game
 function initGame() {
     console.log('[INIT] Initializing game...');
@@ -1668,6 +1679,11 @@ function rollForTurnOrder() {
     const roll = Math.floor(Math.random() * 6) + 1;
     gameState.turnOrderRolls[myPlayerIndex] = roll;
     
+    // Track the order in which players roll (for tiebreaker - first roller wins ties)
+    if (!gameState.rollOrder.includes(myPlayerIndex)) {
+        gameState.rollOrder.push(myPlayerIndex);
+    }
+    
     log(`You rolled a ${roll} for turn order!`);
     document.getElementById('turnOrderResult').textContent = `You rolled: ${roll}`;
     document.getElementById('rollForTurnBtn').disabled = true;
@@ -1692,41 +1708,37 @@ function checkTurnOrderComplete() {
 function determineTurnOrder() {
     const rolls = Object.entries(gameState.turnOrderRolls).map(([idx, roll]) => ({
         playerIndex: parseInt(idx),
-        roll: roll
+        roll: roll,
+        // Get the position in rollOrder for tiebreaker (lower = rolled first)
+        rollPosition: gameState.rollOrder.indexOf(parseInt(idx))
     }));
     
-    // Sort by roll (descending)
-    rolls.sort((a, b) => b.roll - a.roll);
+    // Sort by roll (descending), then by rollPosition (ascending - first roller wins ties)
+    rolls.sort((a, b) => {
+        if (b.roll !== a.roll) {
+            return b.roll - a.roll; // Higher roll wins
+        }
+        return a.rollPosition - b.rollPosition; // First to roll wins ties
+    });
     
-    // Check for ties at the highest roll
+    // Set turn order based on sorted rolls
+    const turnOrder = rolls.map(r => r.playerIndex);
+    gameState.currentPlayerIndex = turnOrder[0];
+    
+    // Check if there was a tie at the top
     const highestRoll = rolls[0].roll;
     const tiedPlayers = rolls.filter(r => r.roll === highestRoll);
     
     if (tiedPlayers.length > 1) {
-        // Tie! Reroll needed
-        log(`Tie for highest roll (${highestRoll})! Tied players must reroll.`);
-        
-        // Clear rolls for tied players only
-        tiedPlayers.forEach(tp => {
-            delete gameState.turnOrderRolls[tp.playerIndex];
-        });
-        
-        // Re-enable roll button if this player is tied
-        if (tiedPlayers.some(tp => tp.playerIndex === myPlayerIndex)) {
-            document.getElementById('rollForTurnBtn').disabled = false;
-            document.getElementById('turnOrderResult').textContent = 'Tie! Roll again.';
-        }
-    } else {
-        // No tie, set turn order
-        const turnOrder = rolls.map(r => r.playerIndex);
-        gameState.currentPlayerIndex = turnOrder[0];
-        
-        log(`Turn order determined: ${turnOrder.map(i => gameState.players[i].name).join(' → ')}`);
-        log(`${gameState.players[gameState.currentPlayerIndex].name} goes first!`);
-        
-        // Start normal gameplay (no initial city loading)
-        startNormalGameplay();
+        const winner = gameState.players[turnOrder[0]].name;
+        log(`Tie at ${highestRoll}! ${winner} rolled first, so ${winner} goes first!`);
     }
+    
+    log(`Turn order determined: ${turnOrder.map(i => gameState.players[i].name).join(' → ')}`);
+    log(`${gameState.players[gameState.currentPlayerIndex].name} goes first!`);
+    
+    // Start normal gameplay
+    startNormalGameplay();
 }
 
 function loadCities() {

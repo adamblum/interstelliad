@@ -89,6 +89,11 @@ function handleTurnOrderRoll(data) {
     
     gameState.turnOrderRolls[playerIndex] = roll;
     
+    // Track the order in which players roll (for tiebreaker - first roller wins ties)
+    if (!gameState.rollOrder.includes(playerIndex)) {
+        gameState.rollOrder.push(playerIndex);
+    }
+    
     const playerName = gameState.players[playerIndex].name;
     log(`${playerName} rolled a ${roll} for turn order.`);
     
