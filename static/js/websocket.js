@@ -104,6 +104,7 @@ function handleCitiesLoaded(data) {
     if (player) {
         player.citiesOnShip = cities;
         player.velocity = velocity;
+        player.hasLoadedCities = true;
         
         log(`${player.name} loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Velocity: ${velocity} light years/turn.`);
     }

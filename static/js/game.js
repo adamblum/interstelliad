@@ -816,7 +816,8 @@ function startGame() {
                     maxColonies: 10,
                     score: 0,
                     citiesOnShip: 0,
-                    velocity: 9
+                    velocity: 9,
+                    hasLoadedCities: false
                 };
             });
             
@@ -894,11 +895,29 @@ function handleCanvasClick(event) {
 
 function handleMove() {
     if (!gameState.selectedHex) {
-        log('Select a destination star system first!');
+        log('Click on a star system or planet to set as your destination!');
         return;
     }
     
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    
+    if (myPlayerIndex !== gameState.currentPlayerIndex) {
+        log("It's not your turn!");
+        return;
+    }
+    
+    // Check if player is at their home planet and hasn't loaded cities yet
+    const homePlanet = HOME_PLANETS[currentPlayer.planet];
+    const isAtHome = currentPlayer.position.q === homePlanet.q && currentPlayer.position.r === homePlanet.r;
+    
+    if (isAtHome && !currentPlayer.hasLoadedCities) {
+        // Player is leaving home for the first time - show city loading UI
+        log('Before leaving your home planet, you must choose how many cities to load on your ship!');
+        document.getElementById('loadCitiesSection').style.display = 'block';
+        gameState.turnPhase = 'loadCities';
+        return;
+    }
+    
     const velocity = currentPlayer.velocity || (9 - (currentPlayer.citiesOnShip || 0));
     
     if (velocity <= 0) {
@@ -1447,24 +1466,9 @@ function determineTurnOrder() {
         log(`Turn order determined: ${turnOrder.map(i => gameState.players[i].name).join(' → ')}`);
         log(`${gameState.players[gameState.currentPlayerIndex].name} goes first!`);
         
-        // Move to city loading phase
-        startCityLoadingPhase();
+        // Start normal gameplay (no initial city loading)
+        startNormalGameplay();
     }
-}
-
-function startCityLoadingPhase() {
-    gameState.turnPhase = 'loadCities';
-    document.getElementById('turnOrderSection').style.display = 'none';
-    
-    if (gameState.currentPlayerIndex === myPlayerIndex && !gameState.hasLoadedCities) {
-        // This player's turn to load cities
-        document.getElementById('loadCitiesSection').style.display = 'block';
-        log('Choose how many cities to load on your ship (0-8).');
-    } else {
-        document.getElementById('loadCitiesSection').style.display = 'none';
-    }
-    
-    updateUI();
 }
 
 function loadCities() {
@@ -1475,11 +1479,12 @@ function loadCities() {
         return;
     }
     
-    gameState.citiesOnShip = cities;
-    gameState.hasLoadedCities = true;
-    const velocity = 9 - cities;
+    const currentPlayer = gameState.players[myPlayerIndex];
+    currentPlayer.citiesOnShip = cities;
+    currentPlayer.hasLoadedCities = true;
+    currentPlayer.velocity = 9 - cities;
     
-    log(`You loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Your ship velocity is ${velocity} light years per turn.`);
+    log(`You loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Your ship velocity is ${currentPlayer.velocity} light years per turn.`);
     
     // Broadcast to other players
     sendWebSocketMessage({
@@ -1488,14 +1493,19 @@ function loadCities() {
         cities: cities
     });
     
-    // Hide city loading UI
+    // Hide city loading UI and show ship status
     document.getElementById('loadCitiesSection').style.display = 'none';
     document.getElementById('shipStatus').style.display = 'block';
     document.getElementById('citiesOnShip').textContent = cities;
-    document.getElementById('currentVelocity').textContent = velocity;
+    document.getElementById('currentVelocity').textContent = currentPlayer.velocity;
     
-    // Start normal gameplay
-    startNormalGameplay();
+    // Return to normal movement phase
+    gameState.turnPhase = 'move';
+    
+    log('Cities loaded! You can now move your ship.');
+    
+    updateUI();
+    drawBoard();
 }
 
 function startNormalGameplay() {
