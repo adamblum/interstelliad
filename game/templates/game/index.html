@@ -96,16 +96,9 @@
 
                     <h3>Actions</h3>
                     <div class="action-buttons">
-                        <button id="moveBtn" class="btn-action">Start Move</button>
                         <button id="checkLifeBtn" class="btn-action" disabled>Check for Life</button>
                         <button id="colonizeBtn" class="btn-action" disabled>Colonize</button>
                         <button id="endTurnBtn" class="btn-action">End Turn</button>
-                    </div>
-
-                    <div id="movementControls" style="display: none; margin: 10px 0;">
-                        <p style="color: #00d4ff;">Moves remaining: <span id="movesRemaining">0</span></p>
-                        <button id="confirmMoveBtn" class="btn-primary">End Move</button>
-                        <button id="redoMoveBtn" class="btn-secondary">Redo Move</button>
                     </div>
 
                     <div id="turnOrderSection" style="display: none;">
@@ -128,13 +121,14 @@
                         <p>Current velocity: <span id="currentVelocity">9</span> light years/turn</p>
                     </div>
 
-                    <div class="dice-section" id="diceSection">
-                        <h3>Dice Roll</h3>
-                        <div class="dice-display">
-                            <div class="die" id="die1">?</div>
-                            <div class="die" id="die2">?</div>
+                    <div id="movementSection">
+                        <h3>Movement</h3>
+                        <button id="moveBtn" class="btn-primary" style="display: none;">Start Move</button>
+                        <div id="movementControls" style="display: none;">
+                            <p style="color: #00d4ff;">Moves remaining: <span id="movesRemaining">0</span></p>
+                            <button id="confirmMoveBtn" class="btn-primary">End Move</button>
+                            <button id="redoMoveBtn" class="btn-secondary">Redo Move</button>
                         </div>
-                        <p id="diceResult"></p>
                     </div>
 
                     <h3>Players</h3>

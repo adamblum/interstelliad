@@ -30,13 +30,11 @@ const gameState = {
 // Player colors
 const PLAYER_COLORS = ['#ff4444', '#4444ff', '#44ff44', '#ffff44'];
 
-// Home planets and their starting positions (Sol system at col 13, row 8)
-const HOME_PLANETS = {
-    'Earth': { q: 13 - 4, r: 8, emoji: '🌍', planetIndex: 0 },
-    'Mars': { q: 13 - 4, r: 8, emoji: '🔴', planetIndex: 1 },
-    'Jupiter': { q: 13 - 4, r: 8, emoji: '🪐', planetIndex: 2 },
-    'The Belt': { q: 13 - 4, r: 8, emoji: '☄️', planetIndex: 3 }
-};
+// Home planets and their starting positions
+// Sol is at col 13, row 8, which converts to axial coordinates
+// Planets are arranged around Sol: East, Southeast, Southwest, West
+// We'll calculate these dynamically from BOARD_STRUCTURE after it's built
+const HOME_PLANETS = {};
 
 // Canvas and context
 let canvas, ctx;
@@ -157,6 +155,19 @@ STAR_SYSTEMS_DATA.forEach(system => {
             isHome: planet.isHome || false
         });
     });
+});
+
+// Populate HOME_PLANETS from BOARD_STRUCTURE
+BOARD_STRUCTURE.forEach(hex => {
+    if (hex.isHome && hex.type === 'planet') {
+        const planetName = hex.shortName;
+        HOME_PLANETS[planetName] = {
+            q: hex.q,
+            r: hex.r,
+            emoji: planetName === 'Earth' ? '🌍' : planetName === 'Mars' ? '🔴' : planetName === 'Jupiter' ? '🪐' : '☄️',
+            planetIndex: Object.keys(HOME_PLANETS).length
+        };
+    }
 });
 
 // Initialize canvas
@@ -1069,13 +1080,13 @@ function handleMove() {
         return;
     }
     
-    // Check if player is at their home planet and hasn't loaded cities yet
+    // Check if player is at their home planet - allow reloading cities any time they're home
     const homePlanet = HOME_PLANETS[currentPlayer.planet];
     const isAtHome = currentPlayer.position.q === homePlanet.q && currentPlayer.position.r === homePlanet.r;
     
-    if (isAtHome && !currentPlayer.hasLoadedCities) {
-        // Player is leaving home for the first time - show city loading UI
-        log('Before leaving your home planet, you must choose how many cities to load on your ship!');
+    if (isAtHome) {
+        // Player is at home planet - show city loading UI to choose/reload cities
+        log('At your home planet! Choose how many cities to load on your ship.');
         document.getElementById('loadCitiesSection').style.display = 'block';
         gameState.turnPhase = 'loadCities';
         return;
@@ -1095,8 +1106,8 @@ function handleMove() {
     
     log(`Click on adjacent hexes to plan your movement (up to ${velocity} hexes). Click "End Move" when ready.`);
     
-    // Show movement controls
-    document.querySelector('.action-buttons').style.display = 'none';
+    // Hide Start Move button, show movement controls
+    document.getElementById('moveBtn').style.display = 'none';
     document.getElementById('movementControls').style.display = 'block';
     document.getElementById('movesRemaining').textContent = velocity;
     document.getElementById('movesRemaining').textContent = velocity;
@@ -1143,9 +1154,9 @@ function confirmMove() {
     gameState.remainingMoves = 0;
     gameState.turnPhase = 'action';
     
-    // Hide movement controls, show action buttons
+    // Hide movement controls, show Start Move button
     document.getElementById('movementControls').style.display = 'none';
-    document.querySelector('.action-buttons').style.display = 'block';
+    document.getElementById('moveBtn').style.display = 'block';
     
     drawBoard();
     updateUI();
@@ -1392,8 +1403,8 @@ function endTurn() {
     document.getElementById('die1').textContent = '?';
     document.getElementById('die2').textContent = '?';
     
-    // Ensure action buttons are visible and movement controls are hidden
-    document.querySelector('.action-buttons').style.display = 'block';
+    // Ensure Start Move button is visible and movement controls are hidden
+    document.getElementById('moveBtn').style.display = 'block';
     document.getElementById('movementControls').style.display = 'none';
     
     log(`${gameState.players[gameState.currentPlayerIndex].name}'s turn`);
