@@ -60,6 +60,10 @@ function handleWebSocketMessage(data) {
         handlePlayerJoined(data);
     } else if (type === 'game_started') {
         handleGameStarted(data);
+    } else if (type === 'turn_order_roll') {
+        handleTurnOrderRoll(data);
+    } else if (type === 'cities_loaded') {
+        handleCitiesLoaded(data);
     } else if (type === 'player_moved') {
         handlePlayerMoved(data);
     } else if (type === 'life_checked') {
@@ -76,5 +80,31 @@ function handleWebSocketMessage(data) {
 function sendWebSocketMessage(data) {
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(data));
+    }
+}
+
+function handleTurnOrderRoll(data) {
+    const playerIndex = data.player_index;
+    const roll = data.roll;
+    
+    gameState.turnOrderRolls[playerIndex] = roll;
+    
+    const playerName = gameState.players[playerIndex].name;
+    log(`${playerName} rolled a ${roll} for turn order.`);
+    
+    checkTurnOrderComplete();
+}
+
+function handleCitiesLoaded(data) {
+    const playerIndex = data.player_index;
+    const cities = data.cities;
+    const velocity = 9 - cities;
+    
+    const player = gameState.players[playerIndex];
+    if (player) {
+        player.citiesOnShip = cities;
+        player.velocity = velocity;
+        
+        log(`${player.name} loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Velocity: ${velocity} light years/turn.`);
     }
 }

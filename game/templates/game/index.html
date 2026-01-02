@@ -102,6 +102,26 @@
                         <button id="endTurnBtn" class="btn-action">End Turn</button>
                     </div>
 
+                    <div id="turnOrderSection" style="display: none;">
+                        <h3>Roll for Turn Order</h3>
+                        <button id="rollForTurnBtn" class="btn-primary">Roll Die</button>
+                        <p id="turnOrderResult"></p>
+                    </div>
+
+                    <div id="loadCitiesSection" style="display: none;">
+                        <h3>Load Cities on Ship</h3>
+                        <p>Choose how many cities to load (0-8):</p>
+                        <p style="font-size: 0.9em; color: #aaa;">Velocity = 9 - cities loaded</p>
+                        <input type="number" id="citiesInput" min="0" max="8" value="0" style="width: 60px; margin: 10px 0;"/>
+                        <button id="loadCitiesBtn" class="btn-primary">Load Cities</button>
+                    </div>
+
+                    <div id="shipStatus" style="display: none; margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                        <h4>Ship Status</h4>
+                        <p>Cities on board: <span id="citiesOnShip">0</span></p>
+                        <p>Current velocity: <span id="currentVelocity">9</span> light years/turn</p>
+                    </div>
+
                     <div class="dice-section" id="diceSection">
                         <h3>Dice Roll</h3>
                         <div class="dice-display">

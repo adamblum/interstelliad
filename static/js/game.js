@@ -10,7 +10,7 @@ const gameState = {
     board: null,
     gameStarted: false,
     selectedHex: null,
-    turnPhase: 'move', // 'move', 'checkLife', 'colonize', 'battle'
+    turnPhase: 'loadCities', // 'rollForTurn', 'loadCities', 'selectDestination', 'move', 'action'
     movesThisTurn: 0,
     maxMovesPerTurn: 3,
     hasColonizedThisTurn: false,
@@ -18,7 +18,11 @@ const gameState = {
     maxPlayers: 2,
     joinedPlayers: [],
     currentPlayerName: null,
-    currentPlayerPlanet: null
+    currentPlayerPlanet: null,
+    turnOrderRolls: {}, // Store player rolls for turn order
+    destinationHex: null, // Current destination for movement
+    citiesOnShip: 0, // Cities currently on ship
+    hasLoadedCities: false // Whether player has loaded cities this game
 };
 
 // Player colors
@@ -478,6 +482,10 @@ function initGame() {
     document.getElementById('rollBattleBtn').addEventListener('click', rollBattle);
     document.getElementById('closeBattleBtn').addEventListener('click', closeBattle);
     document.getElementById('newGameBtn').addEventListener('click', resetGame);
+    
+    // New game flow controls
+    document.getElementById('rollForTurnBtn').addEventListener('click', rollForTurnOrder);
+    document.getElementById('loadCitiesBtn').addEventListener('click', loadCities);
 }
 
 function showRoleSelection() {
@@ -806,7 +814,9 @@ function startGame() {
                     position: { q: homePlanet.q, r: homePlanet.r },
                     colonies: 0,
                     maxColonies: 10,
-                    score: 0
+                    score: 0,
+                    citiesOnShip: 0,
+                    velocity: 9
                 };
             });
             
@@ -849,15 +859,19 @@ function initializeBoard() {
 
 function actuallyStartGame() {
     gameState.gameStarted = true;
-    gameState.currentPlayerIndex = 0;
     
     document.getElementById('gameSetup').style.display = 'none';
     document.getElementById('gameInfo').style.display = 'block';
     document.getElementById('roomCodeDisplay').style.display = 'none';
     
-    updateUI();
+    // Start with rolling for turn order
+    gameState.turnPhase = 'rollForTurn';
+    log('Game started! All players roll to determine turn order.');
+    
+    // Show roll button for all players
+    showRollForTurnUI();
+    
     drawBoard();
-    log('Game started! ' + gameState.players[0].name + ' goes first.');
 }
 
 function handleCanvasClick(event) {
@@ -885,37 +899,64 @@ function handleMove() {
     }
     
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const targetSystem = BOARD_STRUCTURE.find(s => 
+    const velocity = currentPlayer.velocity || (9 - (currentPlayer.citiesOnShip || 0));
+    
+    if (velocity <= 0) {
+        log('Your ship is too heavy to move! (Velocity must be > 0)');
+        return;
+    }
+    
+    const targetHex = BOARD_STRUCTURE.find(s => 
         s.q === gameState.selectedHex.q && s.r === gameState.selectedHex.r
     );
     
-    if (!targetSystem) return;
+    if (!targetHex) return;
     
-    // Check if adjacent
+    // Calculate distance to target
     const distance = Math.max(
-        Math.abs(currentPlayer.position.q - targetSystem.q),
-        Math.abs(currentPlayer.position.r - targetSystem.r),
-        Math.abs((-currentPlayer.position.q - currentPlayer.position.r) - (-targetSystem.q - targetSystem.r))
+        Math.abs(currentPlayer.position.q - targetHex.q),
+        Math.abs(currentPlayer.position.r - targetHex.r),
+        Math.abs((-currentPlayer.position.q - currentPlayer.position.r) - (-targetHex.q - targetHex.r))
     );
     
-    if (distance !== 1) {
-        log('You can only move to adjacent star systems!');
-        return;
+    // Check if target is within velocity range
+    // Note: For planets, use parent star position for distance calculation
+    let targetQ = targetHex.q;
+    let targetR = targetHex.r;
+    
+    if (targetHex.type === 'planet') {
+        targetQ = targetHex.parentQ;
+        targetR = targetHex.parentR;
+        
+        const starDistance = Math.max(
+            Math.abs(currentPlayer.position.q - targetQ),
+            Math.abs(currentPlayer.position.r - targetR),
+            Math.abs((-currentPlayer.position.q - currentPlayer.position.r) - (-targetQ - targetR))
+        );
+        
+        if (starDistance > velocity) {
+            log(`Target is ${starDistance} light years away, but your velocity is only ${velocity}!`);
+            return;
+        }
+        
+        // Player can reach the planet (it's at the star's location)
+        currentPlayer.position = { q: targetHex.q, r: targetHex.r };
+        log(`${currentPlayer.name} traveled ${starDistance} light years to ${targetHex.name}`);
+    } else {
+        // Moving to a star
+        if (distance > velocity) {
+            log(`Target is ${distance} light years away, but your velocity is only ${velocity}!`);
+            return;
+        }
+        
+        currentPlayer.position = { q: targetHex.q, r: targetHex.r };
+        log(`${currentPlayer.name} traveled ${distance} light years to ${targetHex.name}`);
     }
     
-    if (gameState.movesThisTurn >= gameState.maxMovesPerTurn) {
-        log('You have used all your moves this turn!');
-        return;
+    // Enable action buttons if on a planet
+    if (targetHex.type === 'planet') {
+        document.getElementById('checkLifeBtn').disabled = false;
     }
-    
-    // Move player
-    currentPlayer.position = { q: targetSystem.q, r: targetSystem.r };
-    gameState.movesThisTurn++;
-    
-    log(`${currentPlayer.name} moved to ${targetSystem.name}`);
-    
-    // Enable life check button
-    document.getElementById('checkLifeBtn').disabled = false;
     
     drawBoard();
     updateUI();
@@ -1335,6 +1376,136 @@ function handleTurnEnded(data) {
     
     drawBoard();
     updateUI();
+}
+
+// === NEW GAME FLOW FUNCTIONS ===
+
+function showRollForTurnUI() {
+    document.getElementById('turnOrderSection').style.display = 'block';
+    document.getElementById('loadCitiesSection').style.display = 'none';
+    document.getElementById('shipStatus').style.display = 'none';
+    document.querySelector('.action-buttons').style.display = 'none';
+}
+
+function rollForTurnOrder() {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    gameState.turnOrderRolls[myPlayerIndex] = roll;
+    
+    log(`You rolled a ${roll} for turn order!`);
+    document.getElementById('turnOrderResult').textContent = `You rolled: ${roll}`;
+    document.getElementById('rollForTurnBtn').disabled = true;
+    
+    // Broadcast roll to other players
+    sendWebSocketMessage({
+        type: 'turn_order_roll',
+        player_index: myPlayerIndex,
+        roll: roll
+    });
+    
+    // Check if all players have rolled
+    checkTurnOrderComplete();
+}
+
+function checkTurnOrderComplete() {
+    if (Object.keys(gameState.turnOrderRolls).length === gameState.players.length) {
+        determineTurnOrder();
+    }
+}
+
+function determineTurnOrder() {
+    const rolls = Object.entries(gameState.turnOrderRolls).map(([idx, roll]) => ({
+        playerIndex: parseInt(idx),
+        roll: roll
+    }));
+    
+    // Sort by roll (descending)
+    rolls.sort((a, b) => b.roll - a.roll);
+    
+    // Check for ties at the highest roll
+    const highestRoll = rolls[0].roll;
+    const tiedPlayers = rolls.filter(r => r.roll === highestRoll);
+    
+    if (tiedPlayers.length > 1) {
+        // Tie! Reroll needed
+        log(`Tie for highest roll (${highestRoll})! Tied players must reroll.`);
+        
+        // Clear rolls for tied players only
+        tiedPlayers.forEach(tp => {
+            delete gameState.turnOrderRolls[tp.playerIndex];
+        });
+        
+        // Re-enable roll button if this player is tied
+        if (tiedPlayers.some(tp => tp.playerIndex === myPlayerIndex)) {
+            document.getElementById('rollForTurnBtn').disabled = false;
+            document.getElementById('turnOrderResult').textContent = 'Tie! Roll again.';
+        }
+    } else {
+        // No tie, set turn order
+        const turnOrder = rolls.map(r => r.playerIndex);
+        gameState.currentPlayerIndex = turnOrder[0];
+        
+        log(`Turn order determined: ${turnOrder.map(i => gameState.players[i].name).join(' → ')}`);
+        log(`${gameState.players[gameState.currentPlayerIndex].name} goes first!`);
+        
+        // Move to city loading phase
+        startCityLoadingPhase();
+    }
+}
+
+function startCityLoadingPhase() {
+    gameState.turnPhase = 'loadCities';
+    document.getElementById('turnOrderSection').style.display = 'none';
+    
+    if (gameState.currentPlayerIndex === myPlayerIndex && !gameState.hasLoadedCities) {
+        // This player's turn to load cities
+        document.getElementById('loadCitiesSection').style.display = 'block';
+        log('Choose how many cities to load on your ship (0-8).');
+    } else {
+        document.getElementById('loadCitiesSection').style.display = 'none';
+    }
+    
+    updateUI();
+}
+
+function loadCities() {
+    const cities = parseInt(document.getElementById('citiesInput').value);
+    
+    if (cities < 0 || cities > 8) {
+        alert('You must load between 0 and 8 cities!');
+        return;
+    }
+    
+    gameState.citiesOnShip = cities;
+    gameState.hasLoadedCities = true;
+    const velocity = 9 - cities;
+    
+    log(`You loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Your ship velocity is ${velocity} light years per turn.`);
+    
+    // Broadcast to other players
+    sendWebSocketMessage({
+        type: 'cities_loaded',
+        player_index: myPlayerIndex,
+        cities: cities
+    });
+    
+    // Hide city loading UI
+    document.getElementById('loadCitiesSection').style.display = 'none';
+    document.getElementById('shipStatus').style.display = 'block';
+    document.getElementById('citiesOnShip').textContent = cities;
+    document.getElementById('currentVelocity').textContent = velocity;
+    
+    // Start normal gameplay
+    startNormalGameplay();
+}
+
+function startNormalGameplay() {
+    gameState.turnPhase = 'selectDestination';
+    document.querySelector('.action-buttons').style.display = 'block';
+    
+    log('Game is now in progress. Select a destination and move your ship!');
+    
+    updateUI();
+    drawBoard();
 }
 
 // Initialize when page loads
