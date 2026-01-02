@@ -341,9 +341,29 @@ function drawBoard() {
             p.position && p.position.q === hex.q && p.position.r === hex.r
         );
         
+        // Check if we're in movement mode
+        let isCurrentPosition = false;
+        let isAdjacentHex = false;
+        if (gameState.turnPhase === 'moving' && gameState.movementPath.length > 0) {
+            const currentPos = gameState.movementPath[gameState.movementPath.length - 1];
+            isCurrentPosition = hex.q === currentPos.q && hex.r === currentPos.r;
+            
+            // Check if this hex is adjacent to current position
+            const distance = Math.max(
+                Math.abs(hex.q - currentPos.q),
+                Math.abs(hex.r - currentPos.r),
+                Math.abs((-hex.q - hex.r) - (-currentPos.q - currentPos.r))
+            );
+            isAdjacentHex = distance === 1 && gameState.remainingMoves > 0;
+        }
+        
         if (hex.type === 'star') {
             // Draw star system hex
-            const strokeColor = isSelected ? '#00ff00' : '#888888';
+            let strokeColor = '#888888';
+            if (isCurrentPosition) strokeColor = '#00ff00';
+            else if (isAdjacentHex) strokeColor = '#ffff00';
+            else if (isSelected) strokeColor = '#00ff00';
+            
             drawHex(pos.x, pos.y, HEX_RADIUS, hex.color + '44', strokeColor);
             
             // Draw star glow
@@ -362,7 +382,11 @@ function drawBoard() {
             
         } else if (hex.type === 'planet') {
             // Draw planet hex
-            const strokeColor = isSelected ? '#00ff00' : (playerHere ? '#ffff00' : '#666666');
+            let strokeColor = '#666666';
+            if (isCurrentPosition) strokeColor = '#00ff00';
+            else if (isAdjacentHex) strokeColor = '#ffff00';
+            else if (isSelected) strokeColor = '#00ff00';
+            else if (playerHere) strokeColor = '#ffff00';
             
             // Check if planet is colonized
             const isColonized = hex.colonizedBy !== undefined;
@@ -1086,7 +1110,13 @@ function handleMove() {
     
     if (isAtHome) {
         // Player is at home planet - show city loading UI to choose/reload cities
-        log('At your home planet! Choose how many cities to load on your ship.');
+        // Calculate available cities (max 10 minus what's already on ship)
+        const citiesOnShip = currentPlayer.citiesOnShip || 0;
+        const availableCities = Math.max(0, 10 - citiesOnShip);
+        
+        log(`At your home planet! You have ${availableCities} cities available to load.`);
+        document.getElementById('citiesInput').max = availableCities;
+        document.getElementById('citiesInput').value = 0;
         document.getElementById('loadCitiesSection').style.display = 'block';
         gameState.turnPhase = 'loadCities';
         return;
@@ -1109,7 +1139,6 @@ function handleMove() {
     // Hide Start Move button, show movement controls
     document.getElementById('moveBtn').style.display = 'none';
     document.getElementById('movementControls').style.display = 'block';
-    document.getElementById('movesRemaining').textContent = velocity;
     document.getElementById('movesRemaining').textContent = velocity;
     
     drawBoard();
@@ -1403,9 +1432,11 @@ function endTurn() {
     document.getElementById('die1').textContent = '?';
     document.getElementById('die2').textContent = '?';
     
-    // Ensure Start Move button is visible and movement controls are hidden
-    document.getElementById('moveBtn').style.display = 'block';
-    document.getElementById('movementControls').style.display = 'none';
+    // Show Start Move button and hide movement controls at turn start
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    if (moveBtn) moveBtn.style.display = 'block';
+    if (movementControls) movementControls.style.display = 'none';
     
     log(`${gameState.players[gameState.currentPlayerIndex].name}'s turn`);
     
@@ -1674,36 +1705,44 @@ function determineTurnOrder() {
 }
 
 function loadCities() {
-    const cities = parseInt(document.getElementById('citiesInput').value);
+    const currentPlayer = gameState.players[myPlayerIndex];
+    const citiesInput = document.getElementById('citiesInput');
+    const cities = parseInt(citiesInput.value);
     
-    if (cities < 0 || cities > 8) {
-        alert('You must load between 0 and 8 cities!');
+    // Calculate max available cities
+    const citiesOnShip = currentPlayer.citiesOnShip || 0;
+    const maxAvailable = Math.min(8, 10 - citiesOnShip);
+    
+    if (cities < 0 || cities > maxAvailable) {
+        alert(`You must load between 0 and ${maxAvailable} cities!`);
         return;
     }
     
-    const currentPlayer = gameState.players[myPlayerIndex];
-    currentPlayer.citiesOnShip = cities;
+    // Update player's cities on ship
+    currentPlayer.citiesOnShip = citiesOnShip + cities;
     currentPlayer.hasLoadedCities = true;
-    currentPlayer.velocity = 9 - cities;
+    currentPlayer.velocity = 9 - currentPlayer.citiesOnShip;
     
-    log(`You loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Your ship velocity is ${currentPlayer.velocity} light years per turn.`);
+    log(`You loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Total on ship: ${currentPlayer.citiesOnShip}. Velocity: ${currentPlayer.velocity} light years per turn.`);
     
     // Broadcast to other players
     sendWebSocketMessage({
         type: 'cities_loaded',
         player_index: myPlayerIndex,
-        cities: cities
+        cities: currentPlayer.citiesOnShip
     });
     
     // Hide city loading UI and show ship status
     document.getElementById('loadCitiesSection').style.display = 'none';
     document.getElementById('shipStatus').style.display = 'block';
-    document.getElementById('citiesOnShip').textContent = cities;
+    document.getElementById('citiesOnShip').textContent = currentPlayer.citiesOnShip;
     document.getElementById('currentVelocity').textContent = currentPlayer.velocity;
     
-    // Show action buttons for movement
-    document.querySelector('.action-buttons').style.display = 'block';
-    document.getElementById('movementControls').style.display = 'none';
+    // Show Start Move button and hide movement controls
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    if (moveBtn) moveBtn.style.display = 'block';
+    if (movementControls) movementControls.style.display = 'none';
     
     // Return to normal movement phase
     gameState.turnPhase = 'planning';
@@ -1717,7 +1756,13 @@ function loadCities() {
 function startNormalGameplay() {
     gameState.turnPhase = 'planning';
     document.querySelector('.action-buttons').style.display = 'block';
-    document.getElementById('movementControls').style.display = 'none';
+    document.getElementById('turnOrderSection').style.display = 'none';
+    
+    // Show Start Move button and hide movement controls
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    if (moveBtn) moveBtn.style.display = 'block';
+    if (movementControls) movementControls.style.display = 'none';
     
     log('Game is now in progress. Click "Start Move" to move your ship!');
     
