@@ -1492,13 +1492,26 @@ function endTurn() {
     if (moveBtn) {
         moveBtn.style.display = 'block';
         moveBtn.style.visibility = 'visible';
-        moveBtn.style.opacity = '1';
-        moveBtn.disabled = false;
-        console.log('[END_TURN] Start Move button shown, display:', moveBtn.style.display);
+        // Only enable the button for the current player
+        if (myPlayerIndex === gameState.currentPlayerIndex) {
+            moveBtn.disabled = false;
+            moveBtn.style.opacity = '1';
+            console.log('[END_TURN] Start Move button enabled (my turn)');
+        } else {
+            moveBtn.disabled = true;
+            moveBtn.style.opacity = '0.5';
+            console.log('[END_TURN] Start Move button disabled (not my turn)');
+        }
     }
     if (movementControls) movementControls.style.display = 'none';
     
     log(`${gameState.players[gameState.currentPlayerIndex].name}'s turn`);
+    
+    // Broadcast turn change to other players
+    sendWebSocketMessage({
+        type: 'turn_ended',
+        next_player_index: gameState.currentPlayerIndex
+    });
     
     drawBoard();
     updateUI();
@@ -1829,6 +1842,9 @@ function loadCities() {
 
 function startNormalGameplay() {
     console.log('[START_NORMAL] Starting normal gameplay...');
+    console.log('[START_NORMAL] Current player index:', gameState.currentPlayerIndex);
+    console.log('[START_NORMAL] My player index:', myPlayerIndex);
+    
     gameState.turnPhase = 'planning';
     document.querySelector('.action-buttons').style.display = 'block';
     document.getElementById('turnOrderSection').style.display = 'none';
@@ -1839,7 +1855,16 @@ function startNormalGameplay() {
     
     if (moveBtn) {
         moveBtn.style.display = 'block';
-        console.log('[START_NORMAL] moveBtn shown');
+        // Only enable the button for the current player
+        if (myPlayerIndex === gameState.currentPlayerIndex) {
+            moveBtn.disabled = false;
+            moveBtn.style.opacity = '1';
+            console.log('[START_NORMAL] moveBtn enabled (my turn)');
+        } else {
+            moveBtn.disabled = true;
+            moveBtn.style.opacity = '0.5';
+            console.log('[START_NORMAL] moveBtn disabled (not my turn)');
+        }
     }
     if (movementControls) {
         movementControls.style.display = 'none';

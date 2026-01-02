@@ -114,3 +114,37 @@ function handleCitiesLoaded(data) {
         log(`${player.name} loaded ${cities} ${cities === 1 ? 'city' : 'cities'}. Velocity: ${velocity} light years/turn.`);
     }
 }
+
+function handleTurnEnded(data) {
+    const nextPlayerIndex = data.next_player_index;
+    
+    // Update the current player index
+    gameState.currentPlayerIndex = nextPlayerIndex;
+    gameState.turnPhase = 'planning';
+    gameState.movementPath = [];
+    gameState.remainingMoves = 0;
+    
+    const nextPlayer = gameState.players[nextPlayerIndex];
+    log(`${nextPlayer.name}'s turn`);
+    
+    // Update UI based on whether it's my turn
+    const moveBtn = document.getElementById('moveBtn');
+    const movementControls = document.getElementById('movementControls');
+    
+    if (moveBtn) {
+        moveBtn.style.display = 'block';
+        if (myPlayerIndex === nextPlayerIndex) {
+            moveBtn.disabled = false;
+            moveBtn.style.opacity = '1';
+        } else {
+            moveBtn.disabled = true;
+            moveBtn.style.opacity = '0.5';
+        }
+    }
+    if (movementControls) {
+        movementControls.style.display = 'none';
+    }
+    
+    drawBoard();
+    updateUI();
+}
