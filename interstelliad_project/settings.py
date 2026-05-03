@@ -61,7 +61,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://192.168.1.207:8000',
-    'https://interstelliad.up.railway.app',  # Your Railway domain
+    'https://interstelliad.onrender.com',  # Render domain
 ]
 
 # Add Railway domain if deployed
@@ -69,6 +69,10 @@ if 'RAILWAY_PUBLIC_DOMAIN' in os.environ:
     domain = os.environ['RAILWAY_PUBLIC_DOMAIN']
     if not domain.startswith('http'):
         CSRF_TRUSTED_ORIGINS.append(f"https://{domain}")
+
+# Add Render domain if deployed
+if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}")
 
 
 ROOT_URLCONF = 'interstelliad_project.urls'
